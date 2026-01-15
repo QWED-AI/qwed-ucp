@@ -2,7 +2,9 @@
 
 **Verification for Universal Commerce Protocol (UCP) Transactions**
 
+[![CI](https://github.com/QWED-AI/qwed-ucp/actions/workflows/ci.yml/badge.svg)](https://github.com/QWED-AI/qwed-ucp/actions)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 
 QWED-UCP is a verification layer for Google's [Universal Commerce Protocol](https://ucp.dev), ensuring AI agent commerce transactions are mathematically correct.
 
