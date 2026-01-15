@@ -7,7 +7,6 @@ Validates that checkout objects conform to UCP specification:
 """
 
 import json
-import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
