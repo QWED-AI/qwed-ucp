@@ -1,0 +1,17 @@
+name: 'QWED Commerce Auditor'
+description: 'Verify Universal Commerce Protocol (UCP) transactions using SymPy and Z3.'
+author: 'QWED-AI'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  transaction-file:
+    description: 'Path to JSON transaction logs'
+    required: true
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.transaction-file }}
