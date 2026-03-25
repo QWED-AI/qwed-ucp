@@ -14,6 +14,7 @@ app.use(express.json());
 const ESCAPE_CHARACTER_CODE = 0x1B;
 const BELL_CHARACTER_CODE = 0x07;
 const MAX_LOG_LENGTH = 500;
+const MAX_LOG_INPUT_LENGTH = 4096;
 const CSI_FINAL_BYTE_PATTERN = /[@-~]/;
 const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/u;
 
@@ -95,7 +96,9 @@ function normalizeControlCharacters(value) {
 }
 
 function sanitizeForLog(value) {
-    return normalizeControlCharacters(stripAnsiSequences(String(value ?? 'Verification failed')))
+    const rawValue = String(value ?? 'Verification failed').slice(0, MAX_LOG_INPUT_LENGTH);
+
+    return normalizeControlCharacters(stripAnsiSequences(rawValue))
         .slice(0, MAX_LOG_LENGTH);
 }
 
