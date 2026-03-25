@@ -11,10 +11,13 @@ const { createQWEDUCPMiddleware } = require('../middleware/express/qwed-ucp-midd
 const app = express();
 app.use(express.json());
 
+const ANSI_ESCAPE_PATTERN = /\x1B(?:\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\)|[@-_])/g;
+const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/gu;
+
 function sanitizeForLog(value) {
     return String(value ?? 'Verification failed')
-        .replaceAll(/\u001b(?:\[[0-9;?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)|[@-_])/gu, '')
-        .replaceAll(/\p{C}+/gu, '_')
+        .replace(ANSI_ESCAPE_PATTERN, '')
+        .replace(CONTROL_CHARACTER_PATTERN, '_')
         .slice(0, 500);
 }
 
