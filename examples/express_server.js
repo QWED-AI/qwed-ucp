@@ -1,6 +1,6 @@
 /**
  * Example: Express.js UCP Server with QWED-UCP Middleware
- * 
+ *
  * Run: npm install express express-rate-limit && node express_server.js
  */
 
@@ -10,6 +10,97 @@ const { createQWEDUCPMiddleware } = require('../middleware/express/qwed-ucp-midd
 
 const app = express();
 app.use(express.json());
+
+const ESCAPE_CHARACTER_CODE = 0x1B;
+const BELL_CHARACTER_CODE = 0x07;
+const MAX_LOG_LENGTH = 500;
+const MAX_LOG_INPUT_LENGTH = 4096;
+const CSI_FINAL_BYTE_PATTERN = /[@-~]/;
+const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/u;
+
+function codePointAt(value, index) {
+    return value.codePointAt(index);
+}
+
+function isEscapeCharacter(value, index) {
+    return codePointAt(value, index) === ESCAPE_CHARACTER_CODE;
+}
+
+function isBellCharacter(value, index) {
+    return codePointAt(value, index) === BELL_CHARACTER_CODE;
+}
+
+function skipCsiSequence(value, index) {
+    let currentIndex = index + 2;
+
+    while (currentIndex < value.length && !CSI_FINAL_BYTE_PATTERN.test(value[currentIndex])) {
+        currentIndex += 1;
+    }
+
+    return currentIndex;
+}
+
+function skipOscSequence(value, index) {
+    let currentIndex = index + 2;
+
+    while (currentIndex < value.length) {
+        if (isBellCharacter(value, currentIndex)) {
+            return currentIndex;
+        }
+
+        if (isEscapeCharacter(value, currentIndex) && value[currentIndex + 1] === '\\') {
+            return currentIndex + 1;
+        }
+
+        currentIndex += 1;
+    }
+
+    return currentIndex;
+}
+
+function getAnsiSequenceEndIndex(value, index) {
+    const nextCharacter = value[index + 1];
+
+    if (nextCharacter === '[') {
+        return skipCsiSequence(value, index);
+    }
+
+    if (nextCharacter === ']') {
+        return skipOscSequence(value, index);
+    }
+
+    return nextCharacter ? index + 1 : index;
+}
+
+function stripAnsiSequences(value) {
+    let sanitized = '';
+    let index = 0;
+
+    while (index < value.length) {
+        if (!isEscapeCharacter(value, index)) {
+            sanitized += value[index];
+            index += 1;
+            continue;
+        }
+
+        index = getAnsiSequenceEndIndex(value, index) + 1;
+    }
+
+    return sanitized;
+}
+
+function normalizeControlCharacters(value) {
+    return Array.from(value, (character) => (
+        CONTROL_CHARACTER_PATTERN.test(character) ? '_' : character
+    )).join('');
+}
+
+function sanitizeForLog(value) {
+    const rawValue = String(value ?? 'Verification failed').slice(0, MAX_LOG_INPUT_LENGTH);
+
+    return normalizeControlCharacters(stripAnsiSequences(rawValue))
+        .slice(0, MAX_LOG_LENGTH);
+}
 
 // Rate limiting - max 100 requests per 15 minutes
 const limiter = rateLimit({
@@ -24,10 +115,16 @@ const qwedMiddleware = createQWEDUCPMiddleware({
     verifyPaths: ['/checkout-sessions', '/checkout'],
     blockOnFailure: true,
     onVerified: (result, req) => {
-        console.log(`✅ QWED Verified: ${result.guardsPassed} guards passed`);
+        console.log({
+            event: 'qwed_verification_passed',
+            guardsPassed: result.guardsPassed
+        });
     },
     onFailed: (result, req) => {
-        console.log(`❌ QWED Failed: ${result.error}`);
+        console.log({
+            event: 'qwed_verification_failed',
+            error: sanitizeForLog(result.error)
+        });
     }
 });
 
@@ -126,6 +223,6 @@ app.get('/health', (req, res) => {
 // Start server
 const PORT = process.env.PORT || 8182;
 app.listen(PORT, () => {
-    console.log(`🚀 QWED-UCP Demo Merchant running on http://localhost:${PORT}`);
-    console.log('✅ QWED-UCP verification is ENABLED for /checkout-sessions');
+    console.log(`QWED-UCP Demo Merchant running on http://localhost:${PORT}`);
+    console.log('QWED-UCP verification is ENABLED for /checkout-sessions');
 });
