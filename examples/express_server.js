@@ -13,64 +13,88 @@ app.use(express.json());
 
 const ESCAPE_CHARACTER_CODE = 0x1B;
 const BELL_CHARACTER_CODE = 0x07;
+const MAX_LOG_LENGTH = 500;
 const CSI_FINAL_BYTE_PATTERN = /[@-~]/;
-const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/gu;
+const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/u;
+
+function codePointAt(value, index) {
+    return value.codePointAt(index);
+}
+
+function isEscapeCharacter(value, index) {
+    return codePointAt(value, index) === ESCAPE_CHARACTER_CODE;
+}
+
+function isBellCharacter(value, index) {
+    return codePointAt(value, index) === BELL_CHARACTER_CODE;
+}
+
+function skipCsiSequence(value, index) {
+    let currentIndex = index + 2;
+
+    while (currentIndex < value.length && !CSI_FINAL_BYTE_PATTERN.test(value[currentIndex])) {
+        currentIndex += 1;
+    }
+
+    return currentIndex;
+}
+
+function skipOscSequence(value, index) {
+    let currentIndex = index + 2;
+
+    while (currentIndex < value.length) {
+        if (isBellCharacter(value, currentIndex)) {
+            return currentIndex;
+        }
+
+        if (isEscapeCharacter(value, currentIndex) && value[currentIndex + 1] === '\\') {
+            return currentIndex + 1;
+        }
+
+        currentIndex += 1;
+    }
+
+    return currentIndex;
+}
+
+function getAnsiSequenceEndIndex(value, index) {
+    const nextCharacter = value[index + 1];
+
+    if (nextCharacter === '[') {
+        return skipCsiSequence(value, index);
+    }
+
+    if (nextCharacter === ']') {
+        return skipOscSequence(value, index);
+    }
+
+    return nextCharacter ? index + 1 : index;
+}
 
 function stripAnsiSequences(value) {
     let sanitized = '';
 
     for (let index = 0; index < value.length; index += 1) {
-        if (value.charCodeAt(index) !== ESCAPE_CHARACTER_CODE) {
+        if (!isEscapeCharacter(value, index)) {
             sanitized += value[index];
             continue;
         }
 
-        const nextCharacter = value[index + 1];
-
-        if (nextCharacter === '[') {
-            index += 2;
-
-            while (index < value.length && !CSI_FINAL_BYTE_PATTERN.test(value[index])) {
-                index += 1;
-            }
-
-            continue;
-        }
-
-        if (nextCharacter === ']') {
-            index += 2;
-
-            while (index < value.length) {
-                if (value.charCodeAt(index) === BELL_CHARACTER_CODE) {
-                    break;
-                }
-
-                if (
-                    value.charCodeAt(index) === ESCAPE_CHARACTER_CODE &&
-                    value[index + 1] === '\\'
-                ) {
-                    index += 1;
-                    break;
-                }
-
-                index += 1;
-            }
-
-            continue;
-        }
-
-        if (nextCharacter) {
-            index += 1;
-        }
+        index = getAnsiSequenceEndIndex(value, index);
     }
 
     return sanitized;
 }
 
+function normalizeControlCharacters(value) {
+    return Array.from(value, (character) => (
+        CONTROL_CHARACTER_PATTERN.test(character) ? '_' : character
+    )).join('');
+}
+
 function sanitizeForLog(value) {
-    return stripAnsiSequences(String(value ?? 'Verification failed'))
-        .replace(CONTROL_CHARACTER_PATTERN, '_')
-        .slice(0, 500);
+    return normalizeControlCharacters(stripAnsiSequences(String(value ?? 'Verification failed')))
+        .slice(0, MAX_LOG_LENGTH);
 }
 
 // Rate limiting - max 100 requests per 15 minutes
