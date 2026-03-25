@@ -1,6 +1,6 @@
 /**
  * Example: Express.js UCP Server with QWED-UCP Middleware
- * 
+ *
  * Run: npm install express express-rate-limit && node express_server.js
  */
 
@@ -10,6 +10,10 @@ const { createQWEDUCPMiddleware } = require('../middleware/express/qwed-ucp-midd
 
 const app = express();
 app.use(express.json());
+
+function sanitizeForLog(value) {
+    return String(value ?? '').replace(/[\r\n]/g, '_');
+}
 
 // Rate limiting - max 100 requests per 15 minutes
 const limiter = rateLimit({
@@ -24,10 +28,16 @@ const qwedMiddleware = createQWEDUCPMiddleware({
     verifyPaths: ['/checkout-sessions', '/checkout'],
     blockOnFailure: true,
     onVerified: (result, req) => {
-        console.log(`✅ QWED Verified: ${result.guardsPassed} guards passed`);
+        console.log({
+            event: 'qwed_verification_passed',
+            guardsPassed: result.guardsPassed
+        });
     },
     onFailed: (result, req) => {
-        console.log(`❌ QWED Failed: ${result.error}`);
+        console.log({
+            event: 'qwed_verification_failed',
+            error: sanitizeForLog(result.error || 'Verification failed')
+        });
     }
 });
 
@@ -126,6 +136,6 @@ app.get('/health', (req, res) => {
 // Start server
 const PORT = process.env.PORT || 8182;
 app.listen(PORT, () => {
-    console.log(`🚀 QWED-UCP Demo Merchant running on http://localhost:${PORT}`);
-    console.log('✅ QWED-UCP verification is ENABLED for /checkout-sessions');
+    console.log(`QWED-UCP Demo Merchant running on http://localhost:${PORT}`);
+    console.log('QWED-UCP verification is ENABLED for /checkout-sessions');
 });

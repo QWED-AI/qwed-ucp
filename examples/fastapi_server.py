@@ -143,4 +143,4 @@ if __name__ == "__main__":
     import uvicorn
     print("Starting QWED-UCP Demo Merchant on http://localhost:8182")
     print("QWED-UCP verification is ENABLED for /checkout-sessions")
-    uvicorn.run(app, host="0.0.0.0", port=8182)
+    uvicorn.run(app, host="127.0.0.1", port=8182)
