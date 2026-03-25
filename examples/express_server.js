@@ -12,7 +12,10 @@ const app = express();
 app.use(express.json());
 
 function sanitizeForLog(value) {
-    return String(value ?? '').replace(/[\r\n]/g, '_');
+    return String(value ?? 'Verification failed')
+        .replaceAll(/\u001b(?:\[[0-9;?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)|[@-_])/gu, '')
+        .replaceAll(/\p{C}+/gu, '_')
+        .slice(0, 500);
 }
 
 // Rate limiting - max 100 requests per 15 minutes
@@ -36,7 +39,7 @@ const qwedMiddleware = createQWEDUCPMiddleware({
     onFailed: (result, req) => {
         console.log({
             event: 'qwed_verification_failed',
-            error: sanitizeForLog(result.error || 'Verification failed')
+            error: sanitizeForLog(result.error)
         });
     }
 });
