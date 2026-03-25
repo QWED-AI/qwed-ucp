@@ -11,12 +11,64 @@ const { createQWEDUCPMiddleware } = require('../middleware/express/qwed-ucp-midd
 const app = express();
 app.use(express.json());
 
-const ANSI_ESCAPE_PATTERN = /\x1B(?:\[[0-9;?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\)|[@-_])/g;
+const ESCAPE_CHARACTER_CODE = 0x1B;
+const BELL_CHARACTER_CODE = 0x07;
+const CSI_FINAL_BYTE_PATTERN = /[@-~]/;
 const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/gu;
 
+function stripAnsiSequences(value) {
+    let sanitized = '';
+
+    for (let index = 0; index < value.length; index += 1) {
+        if (value.charCodeAt(index) !== ESCAPE_CHARACTER_CODE) {
+            sanitized += value[index];
+            continue;
+        }
+
+        const nextCharacter = value[index + 1];
+
+        if (nextCharacter === '[') {
+            index += 2;
+
+            while (index < value.length && !CSI_FINAL_BYTE_PATTERN.test(value[index])) {
+                index += 1;
+            }
+
+            continue;
+        }
+
+        if (nextCharacter === ']') {
+            index += 2;
+
+            while (index < value.length) {
+                if (value.charCodeAt(index) === BELL_CHARACTER_CODE) {
+                    break;
+                }
+
+                if (
+                    value.charCodeAt(index) === ESCAPE_CHARACTER_CODE &&
+                    value[index + 1] === '\\'
+                ) {
+                    index += 1;
+                    break;
+                }
+
+                index += 1;
+            }
+
+            continue;
+        }
+
+        if (nextCharacter) {
+            index += 1;
+        }
+    }
+
+    return sanitized;
+}
+
 function sanitizeForLog(value) {
-    return String(value ?? 'Verification failed')
-        .replace(ANSI_ESCAPE_PATTERN, '')
+    return stripAnsiSequences(String(value ?? 'Verification failed'))
         .replace(CONTROL_CHARACTER_PATTERN, '_')
         .slice(0, 500);
 }
