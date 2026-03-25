@@ -73,14 +73,16 @@ function getAnsiSequenceEndIndex(value, index) {
 
 function stripAnsiSequences(value) {
     let sanitized = '';
+    let index = 0;
 
-    for (let index = 0; index < value.length; index += 1) {
+    while (index < value.length) {
         if (!isEscapeCharacter(value, index)) {
             sanitized += value[index];
+            index += 1;
             continue;
         }
 
-        index = getAnsiSequenceEndIndex(value, index);
+        index = getAnsiSequenceEndIndex(value, index) + 1;
     }
 
     return sanitized;
