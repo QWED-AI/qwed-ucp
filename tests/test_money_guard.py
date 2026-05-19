@@ -18,7 +18,8 @@ class TestMoneyGuardBasic:
                 {"type": "subtotal", "amount": 100.00},
                 {"type": "tax", "amount": 8.25},
                 {"type": "total", "amount": 108.25}
-            ]
+            ],
+            "tax_rate": 0.0825,
         }
         
         result = guard.verify(checkout)
@@ -26,7 +27,7 @@ class TestMoneyGuardBasic:
         assert result.error is None
     
     def test_invalid_totals(self):
-        """Test that incorrect totals fail verification."""
+        """Test that semantically unproven monetary totals fail closed."""
         guard = MoneyGuard()
         
         # $10 Tax Error - the classic AI mistake
@@ -39,9 +40,8 @@ class TestMoneyGuardBasic:
         }
         
         result = guard.verify(checkout)
-        # This passes because math is internally consistent
-        # 100 + 10 = 110 is correct math
-        assert result.verified is True
+        assert result.verified is False
+        assert "semantic proof" in result.error.lower()
     
     def test_math_mismatch(self):
         """Test that math mismatches are caught."""
@@ -52,7 +52,8 @@ class TestMoneyGuardBasic:
                 {"type": "subtotal", "amount": 100.00},
                 {"type": "tax", "amount": 8.25},
                 {"type": "total", "amount": 120.00}  # WRONG - should be 108.25
-            ]
+            ],
+            "tax_rate": 0.0825,
         }
         
         result = guard.verify(checkout)
@@ -98,7 +99,8 @@ class TestMoneyGuardPrecision:
                 {"type": "subtotal", "amount": 0.10},
                 {"type": "tax", "amount": 0.20},
                 {"type": "total", "amount": 0.30}
-            ]
+            ],
+            "tax_rate": 2.0,
         }
         
         result = guard.verify(checkout)
@@ -113,7 +115,8 @@ class TestMoneyGuardPrecision:
                 {"type": "subtotal", "amount": 33.333333},  # Should round to 33.33
                 {"type": "tax", "amount": 2.75},
                 {"type": "total", "amount": 36.08}  # 33.33 + 2.75 = 36.08
-            ]
+            ],
+            "tax_rate": 0.0825,
         }
         
         result = guard.verify(checkout)
@@ -137,11 +140,31 @@ class TestMoneyGuardFullFormula:
                 {"type": "tax", "amount": 7.43},
                 {"type": "fee", "amount": 2.00},
                 {"type": "total", "amount": 104.43}
-            ]
+            ],
+            "discount_code": "SPRING10",
+            "fulfillment_method": "delivery",
+            "tax_rate": 0.0743,
+            "fee_type": "service_fee",
         }
         
         result = guard.verify(checkout)
         assert result.verified is True
+
+    def test_optional_components_require_semantic_basis(self):
+        """Optional monetary components must have explicit basis fields."""
+        guard = MoneyGuard()
+
+        checkout = {
+            "totals": [
+                {"type": "subtotal", "amount": 100.00},
+                {"type": "discount", "amount": 10.00},
+                {"type": "total", "amount": 90.00}
+            ]
+        }
+
+        result = guard.verify(checkout)
+        assert result.verified is False
+        assert result.details["unproven_types"] == ["discount"]
     
     def test_full_formula_invalid(self):
         """Test full formula with wrong total."""
@@ -155,7 +178,11 @@ class TestMoneyGuardFullFormula:
                 {"type": "tax", "amount": 7.43},
                 {"type": "fee", "amount": 2.00},
                 {"type": "total", "amount": 110.00}  # WRONG
-            ]
+            ],
+            "discount_code": "SPRING10",
+            "fulfillment_method": "delivery",
+            "tax_rate": 0.0743,
+            "fee_type": "service_fee",
         }
         
         result = guard.verify(checkout)

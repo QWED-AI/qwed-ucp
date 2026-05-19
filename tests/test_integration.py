@@ -107,6 +107,9 @@ def create_checkout(items: list[tuple[str, int]],
     return {
         "currency": "USD",
         "status": status,
+        "tax_rate": float(TAX_RATE),
+        "fulfillment_method": shipping,
+        **({"discount_code": discount} if discount else {}),
         "totals": [
             {"type": "subtotal", "amount": float(subtotal)},
             {"type": "discount", "amount": float(discount_amount)},
@@ -248,8 +251,8 @@ class TestFlowerShopErrors:
         guard = MoneyGuard()
         result = guard.verify(checkout)
         
-        # Internal math is consistent (100 + 10 = 110)
-        assert result.verified is True
+        assert result.verified is False
+        assert result.details["unproven_types"] == ["tax"]
         
         # But tax rate check fails
         tax_result = guard.verify_tax_rate(
@@ -275,8 +278,8 @@ class TestFlowerShopErrors:
         guard = MoneyGuard()
         result = guard.verify(checkout)
         
-        # Math: 100 - 15 = 85 ✓
-        assert result.verified is True  # Internal consistency passes
+        assert result.verified is False
+        assert result.details["unproven_types"] == ["discount"]
     
     def test_completed_without_order(self):
         """Completed checkout must have order object."""
