@@ -39,6 +39,10 @@ class MoneyGuard:
     
     # UCP total types
     TOTAL_TYPES = {"subtotal", "tax", "fulfillment", "discount", "fee", "total"}
+
+    # Optional monetary components that require explicit semantic proof before
+    # the checkout can be considered verified in the generic trust-boundary path.
+    SEMANTIC_PROOF_REQUIRED_TYPES = {"tax", "discount", "fulfillment", "fee"}
     
     def verify(self, checkout: dict[str, Any]) -> MoneyGuardResult:
         """
@@ -62,21 +66,55 @@ class MoneyGuard:
         
         # Parse totals into a dict
         totals_dict = self._parse_totals(totals)
+
+        unsupported_types = sorted(set(totals_dict.keys()) - self.TOTAL_TYPES)
+        if unsupported_types:
+            return MoneyGuardResult(
+                verified=False,
+                error="Unsupported monetary total types require explicit verification basis",
+                details={
+                    "unsupported_types": unsupported_types,
+                    "found_types": sorted(totals_dict.keys()),
+                }
+            )
         
-        # Get individual amounts (default to 0 if missing)
-        subtotal = totals_dict.get("subtotal", Decimal("0"))
-        discount = totals_dict.get("discount", Decimal("0"))
-        fulfillment = totals_dict.get("fulfillment", Decimal("0"))
-        tax = totals_dict.get("tax", Decimal("0"))
-        fee = totals_dict.get("fee", Decimal("0"))
+        subtotal = totals_dict.get("subtotal")
         claimed_total = totals_dict.get("total")
+
+        if subtotal is None:
+            return MoneyGuardResult(
+                verified=False,
+                error="Missing 'subtotal' in totals array",
+                details={"found_types": sorted(totals_dict.keys())}
+            )
         
         if claimed_total is None:
             return MoneyGuardResult(
                 verified=False,
                 error="Missing 'total' in totals array",
-                details={"found_types": list(totals_dict.keys())}
+                details={"found_types": sorted(totals_dict.keys())}
             )
+
+        unproven_types = sorted(
+            total_type
+            for total_type in self.SEMANTIC_PROOF_REQUIRED_TYPES
+            if self._requires_semantic_basis(totals_dict, total_type)
+            and not self._has_semantic_basis(checkout, total_type)
+        )
+        if unproven_types:
+            return MoneyGuardResult(
+                verified=False,
+                error="Monetary components require explicit semantic proof before verification",
+                details={
+                    "unproven_types": unproven_types,
+                    "found_types": sorted(totals_dict.keys()),
+                }
+            )
+
+        discount = totals_dict.get("discount", Decimal("0"))
+        fulfillment = totals_dict.get("fulfillment", Decimal("0"))
+        tax = totals_dict.get("tax", Decimal("0"))
+        fee = totals_dict.get("fee", Decimal("0"))
         
         # Calculate expected total using UCP formula
         # Total = Subtotal - Discount + Fulfillment + Tax + Fee
@@ -137,6 +175,41 @@ class MoneyGuard:
                 result[total_type] = amount
         
         return result
+
+    def _has_semantic_basis(self, checkout: dict[str, Any], total_type: str) -> bool:
+        """Check whether an optional monetary component has explicit basis data.
+
+        The generic MoneyGuard path must fail closed when tax/discount/fee/
+        fulfillment amounts are present without supporting proof context.
+        """
+        basis_fields_by_type = {
+            "tax": {"tax_rate", "tax_basis", "tax_breakdown", "tax_lines", "tax_details"},
+            "discount": {"discount_code", "discounts", "discount_breakdown", "discount_details", "discount_rate"},
+            "fee": {"fee_type", "fee_breakdown", "fee_details", "fees"},
+            "fulfillment": {"fulfillment_method", "shipping", "shipping_address", "fulfillment_details", "delivery"},
+        }
+
+        basis_fields = basis_fields_by_type.get(total_type, set())
+        for field_name in basis_fields:
+            value = checkout.get(field_name)
+            if value is None:
+                continue
+            if isinstance(value, (list, dict, str)) and len(value) == 0:
+                continue
+            return True
+
+        return False
+
+    def _requires_semantic_basis(self, totals_dict: dict[str, Decimal], total_type: str) -> bool:
+        """Determine whether a monetary component needs explicit basis proof.
+
+        Zero-valued optional components are treated as absent for the generic
+        MoneyGuard path and do not require semantic-basis metadata.
+        """
+        amount = totals_dict.get(total_type)
+        if amount is None:
+            return False
+        return amount.quantize(self.CURRENCY_PRECISION, rounding=ROUND_HALF_UP) != Decimal("0.00")
     
     def verify_tax_rate(
         self, 
