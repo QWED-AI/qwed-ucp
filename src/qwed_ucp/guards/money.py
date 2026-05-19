@@ -64,19 +64,24 @@ class MoneyGuard:
                 details={"checkout_keys": list(checkout.keys())}
             )
         
-        # Parse totals into a dict
-        totals_dict = self._parse_totals(totals)
-
-        unsupported_types = sorted(set(totals_dict.keys()) - self.TOTAL_TYPES)
+        declared_types = {
+            str(item.get("type", "")).lower()
+            for item in totals
+            if isinstance(item, dict)
+        }
+        unsupported_types = sorted(declared_types - self.TOTAL_TYPES)
         if unsupported_types:
             return MoneyGuardResult(
                 verified=False,
                 error="Unsupported monetary total types require explicit verification basis",
                 details={
                     "unsupported_types": unsupported_types,
-                    "found_types": sorted(totals_dict.keys()),
+                    "found_types": sorted(declared_types),
                 }
             )
+
+        # Parse totals into a dict
+        totals_dict = self._parse_totals(totals)
         
         subtotal = totals_dict.get("subtotal")
         claimed_total = totals_dict.get("total")
@@ -195,6 +200,8 @@ class MoneyGuard:
             if value is None:
                 continue
             if isinstance(value, (list, dict, str)) and len(value) == 0:
+                continue
+            if not bool(value):
                 continue
             return True
 
