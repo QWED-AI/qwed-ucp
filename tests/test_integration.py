@@ -357,5 +357,49 @@ class TestFullVerificationChain:
         assert schema_guard.verified is True
 
 
+class TestVerifierFailClosedModes:
+    """Top-level verifier must never downgrade final trust semantics."""
+
+    def test_non_strict_mode_cannot_verify_invalid_state(self):
+        """Invalid state must still block verified=True in compatibility mode."""
+        checkout = create_checkout([("bouquet_roses", 1)], status="completed")
+
+        verifier = UCPVerifier(strict_mode=False)
+        result = verifier.verify_checkout(checkout)
+
+        assert result.verified is False
+        state_guard = next(g for g in result.guards if g.guard_name == "State Guard")
+        assert state_guard.verified is False
+
+    def test_non_strict_mode_cannot_verify_invalid_structure(self):
+        """Malformed checkout must still block verified=True in compatibility mode."""
+        checkout = create_checkout([("bouquet_roses", 1)])
+        del checkout["currency"]
+
+        verifier = UCPVerifier(strict_mode=False)
+        result = verifier.verify_checkout(checkout)
+
+        assert result.verified is False
+        structure_guard = next(g for g in result.guards if g.guard_name == "Structure Guard")
+        assert structure_guard.verified is False
+
+    def test_verify_totals_only_remains_partial_analysis_api(self):
+        """Math-only checks remain available through the non-final helper API."""
+        checkout = {
+            "totals": [
+                {"type": "subtotal", "amount": 100.00},
+                {"type": "tax", "amount": 8.25},
+                {"type": "total", "amount": 108.25},
+            ],
+            "tax_rate": 0.0825,
+        }
+
+        verifier = UCPVerifier(strict_mode=False)
+        result = verifier.verify_totals_only(checkout)
+
+        assert result.guard_name == "Money Guard"
+        assert result.verified is True
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
