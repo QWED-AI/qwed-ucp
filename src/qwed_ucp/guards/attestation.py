@@ -4,6 +4,7 @@ import json
 import hashlib
 import os
 import secrets
+import threading
 import uuid
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
@@ -41,6 +42,7 @@ class AttestationGuard:
         """
         self.secret = secret_key or os.environ.get("QWED_ATTESTATION_SECRET")
         self._consumed_attestation_ids: set[str] = set()
+        self._consumed_attestation_ids_lock = threading.Lock()
         if not self.secret:
             if allow_insecure or os.environ.get("QWED_DEV_MODE") == "1":
                 # Generate random secret for dev mode - not hardcoded
@@ -167,10 +169,11 @@ class AttestationGuard:
             attestation_id = payload.get("jti")
             if not attestation_id:
                 raise jwt.InvalidTokenError("Attestation missing jti")
-            if attestation_id in self._consumed_attestation_ids:
-                raise jwt.InvalidTokenError("Attestation token has already been consumed")
-            if consume:
-                self._consumed_attestation_ids.add(attestation_id)
+            with self._consumed_attestation_ids_lock:
+                if attestation_id in self._consumed_attestation_ids:
+                    raise jwt.InvalidTokenError("Attestation token has already been consumed")
+                if consume:
+                    self._consumed_attestation_ids.add(attestation_id)
 
             return AttestationResult(
                 token=token,
@@ -225,8 +228,10 @@ class AttestationGuard:
                 str(checkout).encode('utf-8')
             ).hexdigest()[:16]
         
+        receipt_id = f"QWED-{attestation_id.upper()}"
+
         return {
-            "receipt_id": f"QWED-{checkout_hash.upper()}",
+            "receipt_id": receipt_id,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "attestation_id": attestation_id,
             "transaction_attempt_id": transaction_attempt_id,

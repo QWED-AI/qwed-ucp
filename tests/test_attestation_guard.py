@@ -119,6 +119,7 @@ class TestAttestationGuard:
             previous_receipt_id="receipt-older",
         )
 
+        assert receipt["receipt_id"] == "QWED-ATT-1"
         assert receipt["attestation_id"] == "att-1"
         assert receipt["transaction_attempt_id"] == "attempt-123"
         assert receipt["previous_receipt_id"] == "receipt-older"
