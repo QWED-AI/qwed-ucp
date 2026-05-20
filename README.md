@@ -140,6 +140,11 @@ else:
     print(f"❌ Verification failed: {result.error}")
 ```
 
+`verify_checkout()` is always a **full fail-closed trust verdict**: it only
+returns `verified=True` when Money Guard, State Guard, and Structure Guard all
+pass. If you only need arithmetic analysis, use `verify_totals_only()` and do
+not treat that result as final transaction verification.
+
 ### Verify Tax Rate
 
 ```python

@@ -65,7 +65,9 @@ class UCPVerifier:
         Initialize UCPVerifier.
         
         Args:
-            strict_mode: If True, all guards must pass. If False, only Money Guard is required.
+            strict_mode: Deprecated compatibility argument. Final checkout
+                verification is always fail-closed and requires all mandatory
+                guards to pass.
         """
         self.strict_mode = strict_mode
         self.money_guard = MoneyGuard()
@@ -96,12 +98,10 @@ class UCPVerifier:
         structure_result = self._run_structure_guard(checkout)
         guards_results.append(structure_result)
         
-        # Determine overall result
-        if self.strict_mode:
-            all_verified = all(g.verified for g in guards_results)
-        else:
-            # In non-strict mode, only Money Guard is required
-            all_verified = money_result.verified
+        # Determine overall result.
+        # Final trust-boundary verification is always fail-closed: all mandatory
+        # guards must pass, regardless of compatibility flags.
+        all_verified = all(g.verified for g in guards_results)
         
         # Get first error if any
         error = None
