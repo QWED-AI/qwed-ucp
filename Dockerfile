@@ -1,5 +1,5 @@
 # Source: QWED Universal Commerce Protocol Auditor
-FROM python:3.14.4-slim
+FROM python:3.14.5-slim
 
 # Prevent python from writing pyc files to disc
 ENV PYTHONDONTWRITEBYTECODE=1
