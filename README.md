@@ -103,7 +103,7 @@ AI agents (like Gemini, ChatGPT) are now handling e-commerce transactions:
 | **Refund Guard** | Decimal | Full/partial refund amounts, tax reversals |
 | **Tip Guard** | Decimal | Pre/post-tax tip calculations, bounds checking |
 | **Fee Guard** | Decimal | Service fees, delivery fees, platform fees |
-| **Attestation Guard** | JWT (HS256) | Cryptographic proof of verification |
+| **Attestation Guard** | JWT (HS256) | Context-bound attestation artifact with replay checks |
 
 ---
 
