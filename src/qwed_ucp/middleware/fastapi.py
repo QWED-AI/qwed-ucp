@@ -105,17 +105,25 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
                     "guards_passed": 0,
                     "guards_failed": 0,
                     "details": [],
-                })
+                }, code="UNPARSEABLE_REQUEST")
             
             checkout_data = json.loads(body)
-        except json.JSONDecodeError:
+            if not isinstance(checkout_data, dict):
+                return self._create_error_response({
+                    "verified": False,
+                    "error": "Invalid request body: expected JSON object",
+                    "guards_passed": 0,
+                    "guards_failed": 0,
+                    "details": [],
+                }, code="UNPARSEABLE_REQUEST")
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return self._create_error_response({
                 "verified": False,
                 "error": "Malformed request body: expected JSON",
                 "guards_passed": 0,
                 "guards_failed": 0,
                 "details": [],
-            })
+            }, code="UNPARSEABLE_REQUEST")
         
         # Run verification
         verification_result = self._verify_checkout(checkout_data)
@@ -212,12 +220,12 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
             "error": guard_result.error
         })
     
-    def _create_error_response(self, verification_result: dict) -> JSONResponse:
+    def _create_error_response(self, verification_result: dict, code: str = "VERIFICATION_FAILED") -> JSONResponse:
         """Create error response for failed verification."""
         content = {
             "error": "QWED-UCP Verification Failed",
             "message": verification_result.get("error", "Transaction verification failed"),
-            "code": "VERIFICATION_FAILED"
+            "code": code
         }
         
         if self.include_details:

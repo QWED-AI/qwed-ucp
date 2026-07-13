@@ -2,7 +2,6 @@
 
 import json
 
-import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
@@ -37,7 +36,7 @@ class TestMiddlewareFailClosed:
         resp = client.post("/checkout-sessions", content=b"")
         assert resp.status_code == 422
         data = resp.json()
-        assert data["code"] == "VERIFICATION_FAILED"
+        assert data["code"] == "UNPARSEABLE_REQUEST"
         assert "empty" in data["message"].lower()
         assert resp.headers.get("X-QWED-Verified") == "false"
 
@@ -50,7 +49,7 @@ class TestMiddlewareFailClosed:
         )
         assert resp.status_code == 422
         data = resp.json()
-        assert data["code"] == "VERIFICATION_FAILED"
+        assert data["code"] == "UNPARSEABLE_REQUEST"
         assert "malformed" in data["message"].lower() or "json" in data["message"].lower()
         assert resp.headers.get("X-QWED-Verified") == "false"
 
@@ -63,8 +62,53 @@ class TestMiddlewareFailClosed:
         )
         assert resp.status_code == 422
         data = resp.json()
-        assert data["code"] == "VERIFICATION_FAILED"
+        assert data["code"] == "UNPARSEABLE_REQUEST"
         assert resp.headers.get("X-QWED-Verified") == "false"
+
+    def test_json_array_blocked(self):
+        """Valid JSON array (non-object) on a protected path must return 422."""
+        resp = client.post(
+            "/checkout-sessions",
+            content=b"[]",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 422
+        data = resp.json()
+        assert data["code"] == "UNPARSEABLE_REQUEST"
+        assert resp.headers.get("X-QWED-Verified") == "false"
+
+    def test_json_number_blocked(self):
+        """Valid JSON number (non-object) on a protected path must return 422."""
+        resp = client.post(
+            "/checkout-sessions",
+            content=b"42",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 422
+        data = resp.json()
+        assert data["code"] == "UNPARSEABLE_REQUEST"
+
+    def test_json_null_blocked(self):
+        """JSON null on a protected path must return 422."""
+        resp = client.post(
+            "/checkout-sessions",
+            content=b"null",
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 422
+        data = resp.json()
+        assert data["code"] == "UNPARSEABLE_REQUEST"
+
+    def test_binary_body_blocked(self):
+        """Non-UTF-8 binary body on a protected path must return 422."""
+        resp = client.post(
+            "/checkout-sessions",
+            content=b"\xff\xfe\x00\x01",
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        assert resp.status_code == 422
+        data = resp.json()
+        assert data["code"] == "UNPARSEABLE_REQUEST"
 
     def test_valid_json_on_protected_path(self):
         """Valid JSON body must proceed to verification (not blocked by parse check)."""
@@ -75,6 +119,7 @@ class TestMiddlewareFailClosed:
         )
         # Should not be the parse-error response — even if verification itself
         # fails, the error code is VERIFICATION_FAILED, not a parse error message.
+        assert resp.status_code in (200, 422)
         data = resp.json()
         assert "empty" not in data.get("message", "").lower()
         assert "malformed" not in data.get("message", "").lower()
