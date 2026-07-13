@@ -95,16 +95,27 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
         if not self._should_verify(request):
             return await call_next(request)
         
-        # Read and parse request body
+        # Read and parse request body — fail closed on unparseable input
         try:
             body = await request.body()
             if not body:
-                return await call_next(request)
+                return self._create_error_response({
+                    "verified": False,
+                    "error": "Empty request body: cannot verify empty payload",
+                    "guards_passed": 0,
+                    "guards_failed": 0,
+                    "details": [],
+                })
             
             checkout_data = json.loads(body)
         except json.JSONDecodeError:
-            # Not JSON, skip verification
-            return await call_next(request)
+            return self._create_error_response({
+                "verified": False,
+                "error": "Malformed request body: expected JSON",
+                "guards_passed": 0,
+                "guards_failed": 0,
+                "details": [],
+            })
         
         # Run verification
         verification_result = self._verify_checkout(checkout_data)

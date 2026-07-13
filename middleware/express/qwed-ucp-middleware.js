@@ -47,7 +47,13 @@ function createQWEDUCPMiddleware(options = {}) {
         // Get checkout data from request body
         const checkoutData = req.body;
         if (!checkoutData || typeof checkoutData !== 'object') {
-            return next();
+            res.set('X-QWED-Verified', 'false');
+            res.set('X-QWED-Error', 'Empty or non-JSON body: cannot verify');
+            return res.status(422).json({
+                error: 'QWED-UCP Verification Failed',
+                message: 'Empty or non-JSON request body: cannot verify unparseable payload',
+                code: 'UNPARSEABLE_REQUEST'
+            });
         }
 
         try {
