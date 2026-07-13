@@ -274,6 +274,13 @@ def create_verification_dependency(
     async def verify_checkout(request: Request):
         body = await request.json()
         
+        if not isinstance(body, dict):
+            return {
+                "verified": False,
+                "error": "Invalid request body: expected JSON object",
+                "guards": [],
+            }
+        
         result = {"verified": True, "guards": []}
         
         # Core

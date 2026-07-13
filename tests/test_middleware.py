@@ -135,3 +135,38 @@ class TestMiddlewareFailClosed:
         """Request to a non-protected path must pass through."""
         resp = client.get("/health")
         assert resp.status_code == 200
+
+
+class TestVerificationDependency:
+    """Tests for create_verification_dependency fail-closed behavior."""
+
+    def test_dependency_rejects_array(self):
+        """The dependency function must reject non-object JSON."""
+        import asyncio
+
+        from qwed_ucp.middleware.fastapi import create_verification_dependency
+
+        verify = create_verification_dependency()
+
+        class MockRequest:
+            async def json(self):
+                return []
+
+        result = asyncio.run(verify(MockRequest()))
+        assert result["verified"] is False
+        assert "object" in result["error"].lower()
+
+    def test_dependency_rejects_number(self):
+        """The dependency function must reject numeric JSON."""
+        import asyncio
+
+        from qwed_ucp.middleware.fastapi import create_verification_dependency
+
+        verify = create_verification_dependency()
+
+        class MockRequest:
+            async def json(self):
+                return 42
+
+        result = asyncio.run(verify(MockRequest()))
+        assert result["verified"] is False
