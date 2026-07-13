@@ -271,6 +271,16 @@ def create_verification_dependency(
     _disc_guard = DiscountGuard() if use_advanced_guards else None
     _curr_guard = CurrencyGuard() if use_advanced_guards else None
     
+    def _run_advanced_guards(body, result):
+        for name, guard in (("LineItems", _li_guard), ("Discount", _disc_guard), ("Currency", _curr_guard)):
+            if guard is None:
+                continue
+            gr = guard.verify(body)
+            if not gr.verified:
+                result["verified"] = False
+                result["error"] = gr.error
+            result["guards"].append({"name": name, "ok": gr.verified})
+    
     async def verify_checkout(request: Request):
         try:
             body = await request.json()
@@ -299,13 +309,7 @@ def create_verification_dependency(
         for g in core.guards:
             result["guards"].append({"name": g.guard_name, "ok": g.verified})
         
-        # Advanced
-        if _li_guard:
-            li = _li_guard.verify(body)
-            if not li.verified:
-                result["verified"] = False
-                result["error"] = li.error
-            result["guards"].append({"name": "LineItems", "ok": li.verified})
+        _run_advanced_guards(body, result)
         
         return result
     
