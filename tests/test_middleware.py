@@ -144,15 +144,16 @@ class TestVerificationDependency:
         """The dependency function must reject non-object JSON."""
         import asyncio
 
+        from unittest.mock import AsyncMock
+
         from qwed_ucp.middleware.fastapi import create_verification_dependency
 
         verify = create_verification_dependency()
 
-        class MockRequest:
-            async def json(self):
-                return []
+        request = AsyncMock()
+        request.json = AsyncMock(return_value=[])
 
-        result = asyncio.run(verify(MockRequest()))
+        result = asyncio.run(verify(request))
         assert result["verified"] is False
         assert "object" in result["error"].lower()
 
@@ -160,13 +161,47 @@ class TestVerificationDependency:
         """The dependency function must reject numeric JSON."""
         import asyncio
 
+        from unittest.mock import AsyncMock
+
         from qwed_ucp.middleware.fastapi import create_verification_dependency
 
         verify = create_verification_dependency()
 
-        class MockRequest:
-            async def json(self):
-                return 42
+        request = AsyncMock()
+        request.json = AsyncMock(return_value=42)
 
-        result = asyncio.run(verify(MockRequest()))
+        result = asyncio.run(verify(request))
+        assert result["verified"] is False
+
+    def test_dependency_rejects_malformed_json(self):
+        """The dependency function must reject malformed JSON."""
+        import asyncio
+
+        from unittest.mock import AsyncMock
+
+        from qwed_ucp.middleware.fastapi import create_verification_dependency
+
+        verify = create_verification_dependency()
+
+        request = AsyncMock()
+        request.json = AsyncMock(side_effect=json.JSONDecodeError("msg", "doc", 0))
+
+        result = asyncio.run(verify(request))
+        assert result["verified"] is False
+        assert "malformed" in result["error"].lower()
+
+    def test_dependency_rejects_empty_body(self):
+        """The dependency function must reject empty body."""
+        import asyncio
+
+        from unittest.mock import AsyncMock
+
+        from qwed_ucp.middleware.fastapi import create_verification_dependency
+
+        verify = create_verification_dependency()
+
+        request = AsyncMock()
+        request.json = AsyncMock(side_effect=json.JSONDecodeError("Expecting value", "", 0))
+
+        result = asyncio.run(verify(request))
         assert result["verified"] is False

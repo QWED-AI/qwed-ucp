@@ -272,7 +272,14 @@ def create_verification_dependency(
     _curr_guard = CurrencyGuard() if use_advanced_guards else None
     
     async def verify_checkout(request: Request):
-        body = await request.json()
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return {
+                "verified": False,
+                "error": "Malformed request body: expected JSON",
+                "guards": [],
+            }
         
         if not isinstance(body, dict):
             return {
