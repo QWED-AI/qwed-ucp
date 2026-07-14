@@ -46,7 +46,7 @@ function createQWEDUCPMiddleware(options = {}) {
 
         // Get checkout data from request body
         const checkoutData = req.body;
-        if (!checkoutData || typeof checkoutData !== 'object' || Array.isArray(checkoutData)) {
+        if (!req.is('application/json') || !checkoutData || typeof checkoutData !== 'object' || Array.isArray(checkoutData)) {
             res.set('X-QWED-Verified', 'false');
             res.set('X-QWED-Error', 'Empty or non-JSON body: cannot verify');
             return res.status(422).json({

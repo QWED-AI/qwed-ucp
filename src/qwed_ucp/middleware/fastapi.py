@@ -253,7 +253,8 @@ def _run_advanced_guards(body, result, li_guard, disc_guard, curr_guard):
         gr = guard.verify(body)
         if not gr.verified:
             result["verified"] = False
-            result["error"] = gr.error
+            if "error" not in result:
+                result["error"] = gr.error
         result["guards"].append({"name": name, "ok": gr.verified})
 
 
