@@ -95,16 +95,35 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
         if not self._should_verify(request):
             return await call_next(request)
         
-        # Read and parse request body
+        # Read and parse request body — fail closed on unparseable input
         try:
             body = await request.body()
             if not body:
-                return await call_next(request)
+                return self._create_error_response({
+                    "verified": False,
+                    "error": "Empty request body: cannot verify empty payload",
+                    "guards_passed": 0,
+                    "guards_failed": 0,
+                    "details": [],
+                }, code="UNPARSEABLE_REQUEST")
             
             checkout_data = json.loads(body)
-        except json.JSONDecodeError:
-            # Not JSON, skip verification
-            return await call_next(request)
+            if not isinstance(checkout_data, dict):
+                return self._create_error_response({
+                    "verified": False,
+                    "error": "Invalid request body: expected JSON object",
+                    "guards_passed": 0,
+                    "guards_failed": 0,
+                    "details": [],
+                }, code="UNPARSEABLE_REQUEST")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return self._create_error_response({
+                "verified": False,
+                "error": "Malformed request body: expected JSON",
+                "guards_passed": 0,
+                "guards_failed": 0,
+                "details": [],
+            }, code="UNPARSEABLE_REQUEST")
         
         # Run verification
         verification_result = self._verify_checkout(checkout_data)
@@ -201,12 +220,12 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
             "error": guard_result.error
         })
     
-    def _create_error_response(self, verification_result: dict) -> JSONResponse:
+    def _create_error_response(self, verification_result: dict, code: str = "VERIFICATION_FAILED") -> JSONResponse:
         """Create error response for failed verification."""
         content = {
             "error": "QWED-UCP Verification Failed",
             "message": verification_result.get("error", "Transaction verification failed"),
-            "code": "VERIFICATION_FAILED"
+            "code": code
         }
         
         if self.include_details:
@@ -224,6 +243,19 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
                 "X-QWED-Error": verification_result.get("error", "Unknown")[:100]
             }
         )
+
+
+def _run_advanced_guards(body, result, li_guard, disc_guard, curr_guard):
+    """Run advanced guards against body and update result in-place."""
+    for name, guard in (("LineItems", li_guard), ("Discount", disc_guard), ("Currency", curr_guard)):
+        if guard is None:
+            continue
+        gr = guard.verify(body)
+        if not gr.verified:
+            result["verified"] = False
+            if "error" not in result:
+                result["error"] = gr.error
+        result["guards"].append({"name": name, "ok": gr.verified})
 
 
 def create_verification_dependency(
@@ -253,11 +285,16 @@ def create_verification_dependency(
     _curr_guard = CurrencyGuard() if use_advanced_guards else None
     
     async def verify_checkout(request: Request):
-        body = await request.json()
+        try:
+            body = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return {"verified": False, "error": "Malformed request body: expected JSON", "guards": []}
+        
+        if not isinstance(body, dict):
+            return {"verified": False, "error": "Invalid request body: expected JSON object", "guards": []}
         
         result = {"verified": True, "guards": []}
         
-        # Core
         core = _verifier.verify_checkout(body)
         if not core.verified:
             result["verified"] = False
@@ -266,13 +303,7 @@ def create_verification_dependency(
         for g in core.guards:
             result["guards"].append({"name": g.guard_name, "ok": g.verified})
         
-        # Advanced
-        if _li_guard:
-            li = _li_guard.verify(body)
-            if not li.verified:
-                result["verified"] = False
-                result["error"] = li.error
-            result["guards"].append({"name": "LineItems", "ok": li.verified})
+        _run_advanced_guards(body, result, _li_guard, _disc_guard, _curr_guard)
         
         return result
     
