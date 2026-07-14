@@ -245,6 +245,18 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
         )
 
 
+def _run_advanced_guards(body, result, li_guard, disc_guard, curr_guard):
+    """Run advanced guards against body and update result in-place."""
+    for name, guard in (("LineItems", li_guard), ("Discount", disc_guard), ("Currency", curr_guard)):
+        if guard is None:
+            continue
+        gr = guard.verify(body)
+        if not gr.verified:
+            result["verified"] = False
+            result["error"] = gr.error
+        result["guards"].append({"name": name, "ok": gr.verified})
+
+
 def create_verification_dependency(
     verifier: Optional[UCPVerifier] = None,
     use_advanced_guards: bool = True
@@ -271,36 +283,17 @@ def create_verification_dependency(
     _disc_guard = DiscountGuard() if use_advanced_guards else None
     _curr_guard = CurrencyGuard() if use_advanced_guards else None
     
-    def _run_advanced_guards(body, result):
-        for name, guard in (("LineItems", _li_guard), ("Discount", _disc_guard), ("Currency", _curr_guard)):
-            if guard is None:
-                continue
-            gr = guard.verify(body)
-            if not gr.verified:
-                result["verified"] = False
-                result["error"] = gr.error
-            result["guards"].append({"name": name, "ok": gr.verified})
-    
     async def verify_checkout(request: Request):
         try:
             body = await request.json()
         except (json.JSONDecodeError, UnicodeDecodeError):
-            return {
-                "verified": False,
-                "error": "Malformed request body: expected JSON",
-                "guards": [],
-            }
+            return {"verified": False, "error": "Malformed request body: expected JSON", "guards": []}
         
         if not isinstance(body, dict):
-            return {
-                "verified": False,
-                "error": "Invalid request body: expected JSON object",
-                "guards": [],
-            }
+            return {"verified": False, "error": "Invalid request body: expected JSON object", "guards": []}
         
         result = {"verified": True, "guards": []}
         
-        # Core
         core = _verifier.verify_checkout(body)
         if not core.verified:
             result["verified"] = False
@@ -309,7 +302,7 @@ def create_verification_dependency(
         for g in core.guards:
             result["guards"].append({"name": g.guard_name, "ok": g.verified})
         
-        _run_advanced_guards(body, result)
+        _run_advanced_guards(body, result, _li_guard, _disc_guard, _curr_guard)
         
         return result
     
