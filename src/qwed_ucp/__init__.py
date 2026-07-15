@@ -1,13 +1,13 @@
 """QWED-UCP: Verification for Universal Commerce Protocol transactions."""
 
-from qwed_ucp.core import UCPVerifier, UCPVerificationResult
+from qwed_ucp.core import UCPVerifier, UCPVerificationResult, GuardResult, TrustStatus
 from qwed_ucp.guards import (
     MoneyGuard, StateGuard, DiscountGuard, CurrencyGuard,
     RefundGuard, TipGuard, FeeGuard, AttestationGuard
 )
 
 __all__ = [
-    "UCPVerifier", "UCPVerificationResult",
+    "UCPVerifier", "UCPVerificationResult", "GuardResult", "TrustStatus",
     "MoneyGuard", "StateGuard", "DiscountGuard", "CurrencyGuard",
     "RefundGuard", "TipGuard", "FeeGuard", "AttestationGuard"
 ]

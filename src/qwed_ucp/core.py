@@ -6,6 +6,7 @@ from typing import Any, Optional
 from qwed_ucp.guards.money import MoneyGuard
 from qwed_ucp.guards.state import StateGuard
 from qwed_ucp.guards.schema import SchemaGuard
+from qwed_ucp.types import TrustStatus, reconcile_trust_status, aggregate_status
 
 
 @dataclass
@@ -13,20 +14,28 @@ class GuardResult:
     """Result from a single guard verification."""
     
     guard_name: str
-    verified: bool
+    verified: bool = False
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
+    status: Optional[TrustStatus] = None
+    
+    def __post_init__(self):
+        self.verified, self.status = reconcile_trust_status(self.verified, self.status)
 
 
 @dataclass
 class UCPVerificationResult:
     """Result from full UCP verification."""
     
-    verified: bool
+    verified: bool = False
     guards: list[GuardResult] = field(default_factory=list)
     error: Optional[str] = None
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
+    status: Optional[TrustStatus] = None
+    
+    def __post_init__(self):
+        self.verified, self.status = reconcile_trust_status(self.verified, self.status)
     
     def __str__(self) -> str:
         if self.verified:
@@ -103,6 +112,10 @@ class UCPVerifier:
         # guards must pass, regardless of compatibility flags.
         all_verified = all(g.verified for g in guards_results)
         
+        # Aggregate status — propagate the most-severe guard status
+        # (ENGINE_ERROR > QUARANTINED > FAILED > UNVERIFIABLE > UNSUPPORTED > PARTIAL > VERIFIED)
+        status = aggregate_status([g.status for g in guards_results])
+        
         # Get first error if any
         error = None
         for g in guards_results:
@@ -112,60 +125,41 @@ class UCPVerifier:
         
         return UCPVerificationResult(
             verified=all_verified,
+            status=status,
             guards=guards_results,
             error=error
         )
     
+    def _run_guard(self, guard_name: str, guard: Any, checkout: dict[str, Any]) -> GuardResult:
+        """Execute a guard safely and wrap its result."""
+        try:
+            result = guard.verify(checkout)
+            return GuardResult(
+                guard_name=guard_name,
+                status=getattr(result, 'status', None),
+                verified=result.verified,
+                error=getattr(result, 'error', None),
+                details=getattr(result, 'details', {})
+            )
+        except Exception as e:
+            return GuardResult(
+                guard_name=guard_name,
+                status=TrustStatus.ENGINE_ERROR,
+                verified=False,
+                error=f"Guard execution error: {str(e)}"
+            )
+
     def _run_money_guard(self, checkout: dict[str, Any]) -> GuardResult:
         """Run Money Guard to verify math calculations."""
-        try:
-            result = self.money_guard.verify(checkout)
-            return GuardResult(
-                guard_name="Money Guard",
-                verified=result.verified,
-                error=result.error if hasattr(result, 'error') else None,
-                details=result.details if hasattr(result, 'details') else {}
-            )
-        except Exception as e:
-            return GuardResult(
-                guard_name="Money Guard",
-                verified=False,
-                error=f"Guard execution error: {str(e)}"
-            )
-    
+        return self._run_guard("Money Guard", self.money_guard, checkout)
+
     def _run_state_guard(self, checkout: dict[str, Any]) -> GuardResult:
         """Run State Guard to verify checkout state logic."""
-        try:
-            result = self.state_guard.verify(checkout)
-            return GuardResult(
-                guard_name="State Guard",
-                verified=result.verified,
-                error=result.error if hasattr(result, 'error') else None,
-                details=result.details if hasattr(result, 'details') else {}
-            )
-        except Exception as e:
-            return GuardResult(
-                guard_name="State Guard",
-                verified=False,
-                error=f"Guard execution error: {str(e)}"
-            )
-    
+        return self._run_guard("State Guard", self.state_guard, checkout)
+
     def _run_structure_guard(self, checkout: dict[str, Any]) -> GuardResult:
         """Run Structure Guard to verify UCP schema compliance."""
-        try:
-            result = self.schema_guard.verify(checkout)
-            return GuardResult(
-                guard_name="Structure Guard",
-                verified=result.verified,
-                error=result.error if hasattr(result, 'error') else None,
-                details=result.details if hasattr(result, 'details') else {}
-            )
-        except Exception as e:
-            return GuardResult(
-                guard_name="Structure Guard",
-                verified=False,
-                error=f"Guard execution error: {str(e)}"
-            )
+        return self._run_guard("Structure Guard", self.schema_guard, checkout)
     
     def verify_totals_only(self, checkout: dict[str, Any]) -> GuardResult:
         """
