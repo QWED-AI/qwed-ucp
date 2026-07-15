@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from qwed_ucp.types import TrustStatus
+from qwed_ucp.types import TrustStatus, reconcile_trust_status
 
 try:
     import jsonschema
@@ -23,16 +23,13 @@ except ImportError:
 class SchemaGuardResult:
     """Result from Schema Guard verification."""
     
-    verified: bool = True
-    status: Optional[TrustStatus] = None
+    verified: bool = False
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
+    status: Optional[TrustStatus] = None
 
     def __post_init__(self):
-        if self.status is not None:
-            self.verified = (self.status == TrustStatus.VERIFIED)
-        else:
-            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
+        self.verified, self.status = reconcile_trust_status(self.verified, self.status)
 
 
 # Minimal checkout schema (subset of UCP spec)

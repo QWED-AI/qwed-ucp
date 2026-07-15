@@ -12,25 +12,22 @@ from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
 
-from qwed_ucp.types import TrustStatus
+from qwed_ucp.types import TrustStatus, reconcile_trust_status
 
 
 @dataclass
 class RefundGuardResult:
     """Result from Refund Guard verification."""
     
-    verified: bool = True
-    status: Optional[TrustStatus] = None
+    verified: bool = False
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
+    status: Optional[TrustStatus] = None
 
     def __post_init__(self):
-        if self.status is not None:
-            self.verified = (self.status == TrustStatus.VERIFIED)
-        else:
-            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
+        self.verified, self.status = reconcile_trust_status(self.verified, self.status)
 
 
 class RefundGuard:

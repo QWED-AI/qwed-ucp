@@ -1,6 +1,6 @@
 """Tests for TrustStatus enum and typed trust verdicts."""
 
-from qwed_ucp.types import TrustStatus
+from qwed_ucp.types import TrustStatus, aggregate_status
 from qwed_ucp.core import GuardResult, UCPVerificationResult, UCPVerifier
 
 
@@ -24,10 +24,11 @@ class TestTrustStatusEnum:
 class TestGuardResultTrustStatus:
     """GuardResult derives status from verified and vice versa."""
 
-    def test_default_verified_is_verified_status(self):
+    def test_default_verified_is_failed_status(self):
+        """Default result without arguments is FAILED (fail-closed)."""
         r = GuardResult(guard_name="test")
-        assert r.verified is True
-        assert r.status == TrustStatus.VERIFIED
+        assert r.verified is False
+        assert r.status == TrustStatus.FAILED
 
     def test_verified_true_sets_status_verified(self):
         r = GuardResult(guard_name="test", verified=True)
@@ -99,3 +100,26 @@ class TestVerifierStatusPropagation:
         result = verifier.verify_checkout(checkout)
         assert result.verified is False
         assert result.status == TrustStatus.FAILED
+
+
+class TestAggregateStatus:
+    """aggregate_status preserves the most-severe trust state."""
+
+    def test_empty_list_returns_failed(self):
+        assert aggregate_status([]) == TrustStatus.FAILED
+
+    def test_engine_error_most_severe(self):
+        statuses = [TrustStatus.FAILED, TrustStatus.ENGINE_ERROR, TrustStatus.UNSUPPORTED]
+        assert aggregate_status(statuses) == TrustStatus.ENGINE_ERROR
+
+    def test_unverifiable_over_partial(self):
+        statuses = [TrustStatus.PARTIAL, TrustStatus.UNVERIFIABLE]
+        assert aggregate_status(statuses) == TrustStatus.UNVERIFIABLE
+
+    def test_all_verified(self):
+        statuses = [TrustStatus.VERIFIED, TrustStatus.VERIFIED]
+        assert aggregate_status(statuses) == TrustStatus.VERIFIED
+
+    def test_quarantined_over_failed(self):
+        statuses = [TrustStatus.FAILED, TrustStatus.QUARANTINED]
+        assert aggregate_status(statuses) == TrustStatus.QUARANTINED

@@ -6,7 +6,7 @@ from typing import Any, Optional
 from qwed_ucp.guards.money import MoneyGuard
 from qwed_ucp.guards.state import StateGuard
 from qwed_ucp.guards.schema import SchemaGuard
-from qwed_ucp.types import TrustStatus
+from qwed_ucp.types import TrustStatus, reconcile_trust_status, aggregate_status
 
 
 @dataclass
@@ -14,34 +14,28 @@ class GuardResult:
     """Result from a single guard verification."""
     
     guard_name: str
-    verified: bool = True
-    status: Optional[TrustStatus] = None
+    verified: bool = False
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
+    status: Optional[TrustStatus] = None
     
     def __post_init__(self):
-        if self.status is not None:
-            self.verified = (self.status == TrustStatus.VERIFIED)
-        else:
-            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
+        self.verified, self.status = reconcile_trust_status(self.verified, self.status)
 
 
 @dataclass
 class UCPVerificationResult:
     """Result from full UCP verification."""
     
-    verified: bool = True
-    status: Optional[TrustStatus] = None
+    verified: bool = False
     guards: list[GuardResult] = field(default_factory=list)
     error: Optional[str] = None
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
+    status: Optional[TrustStatus] = None
     
     def __post_init__(self):
-        if self.status is not None:
-            self.verified = (self.status == TrustStatus.VERIFIED)
-        else:
-            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
+        self.verified, self.status = reconcile_trust_status(self.verified, self.status)
     
     def __str__(self) -> str:
         if self.verified:
@@ -118,14 +112,9 @@ class UCPVerifier:
         # guards must pass, regardless of compatibility flags.
         all_verified = all(g.verified for g in guards_results)
         
-        # Aggregate status — degraded if any guard had ENGINE_ERROR
-        status = TrustStatus.VERIFIED
-        for g in guards_results:
-            if g.status == TrustStatus.ENGINE_ERROR:
-                status = TrustStatus.ENGINE_ERROR
-                break
-        if status == TrustStatus.VERIFIED and not all_verified:
-            status = TrustStatus.FAILED
+        # Aggregate status — propagate the most-severe guard status
+        # (ENGINE_ERROR > QUARANTINED > FAILED > UNVERIFIABLE > UNSUPPORTED > PARTIAL > VERIFIED)
+        status = aggregate_status([g.status for g in guards_results])
         
         # Get first error if any
         error = None
