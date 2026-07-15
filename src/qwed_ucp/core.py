@@ -6,6 +6,7 @@ from typing import Any, Optional
 from qwed_ucp.guards.money import MoneyGuard
 from qwed_ucp.guards.state import StateGuard
 from qwed_ucp.guards.schema import SchemaGuard
+from qwed_ucp.types import TrustStatus
 
 
 @dataclass
@@ -13,20 +14,34 @@ class GuardResult:
     """Result from a single guard verification."""
     
     guard_name: str
-    verified: bool
+    verified: bool = True
+    status: Optional[TrustStatus] = None
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
+    
+    def __post_init__(self):
+        if self.status is not None:
+            self.verified = (self.status == TrustStatus.VERIFIED)
+        else:
+            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
 
 
 @dataclass
 class UCPVerificationResult:
     """Result from full UCP verification."""
     
-    verified: bool
+    verified: bool = True
+    status: Optional[TrustStatus] = None
     guards: list[GuardResult] = field(default_factory=list)
     error: Optional[str] = None
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
+    
+    def __post_init__(self):
+        if self.status is not None:
+            self.verified = (self.status == TrustStatus.VERIFIED)
+        else:
+            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
     
     def __str__(self) -> str:
         if self.verified:
@@ -103,6 +118,15 @@ class UCPVerifier:
         # guards must pass, regardless of compatibility flags.
         all_verified = all(g.verified for g in guards_results)
         
+        # Aggregate status — degraded if any guard had ENGINE_ERROR
+        status = TrustStatus.VERIFIED
+        for g in guards_results:
+            if g.status == TrustStatus.ENGINE_ERROR:
+                status = TrustStatus.ENGINE_ERROR
+                break
+        if status == TrustStatus.VERIFIED and not all_verified:
+            status = TrustStatus.FAILED
+        
         # Get first error if any
         error = None
         for g in guards_results:
@@ -112,6 +136,7 @@ class UCPVerifier:
         
         return UCPVerificationResult(
             verified=all_verified,
+            status=status,
             guards=guards_results,
             error=error
         )
@@ -122,6 +147,7 @@ class UCPVerifier:
             result = self.money_guard.verify(checkout)
             return GuardResult(
                 guard_name="Money Guard",
+                status=result.status if hasattr(result, 'status') else None,
                 verified=result.verified,
                 error=result.error if hasattr(result, 'error') else None,
                 details=result.details if hasattr(result, 'details') else {}
@@ -129,6 +155,7 @@ class UCPVerifier:
         except Exception as e:
             return GuardResult(
                 guard_name="Money Guard",
+                status=TrustStatus.ENGINE_ERROR,
                 verified=False,
                 error=f"Guard execution error: {str(e)}"
             )
@@ -139,6 +166,7 @@ class UCPVerifier:
             result = self.state_guard.verify(checkout)
             return GuardResult(
                 guard_name="State Guard",
+                status=result.status if hasattr(result, 'status') else None,
                 verified=result.verified,
                 error=result.error if hasattr(result, 'error') else None,
                 details=result.details if hasattr(result, 'details') else {}
@@ -146,6 +174,7 @@ class UCPVerifier:
         except Exception as e:
             return GuardResult(
                 guard_name="State Guard",
+                status=TrustStatus.ENGINE_ERROR,
                 verified=False,
                 error=f"Guard execution error: {str(e)}"
             )
@@ -156,6 +185,7 @@ class UCPVerifier:
             result = self.schema_guard.verify(checkout)
             return GuardResult(
                 guard_name="Structure Guard",
+                status=result.status if hasattr(result, 'status') else None,
                 verified=result.verified,
                 error=result.error if hasattr(result, 'error') else None,
                 details=result.details if hasattr(result, 'details') else {}
@@ -163,6 +193,7 @@ class UCPVerifier:
         except Exception as e:
             return GuardResult(
                 guard_name="Structure Guard",
+                status=TrustStatus.ENGINE_ERROR,
                 verified=False,
                 error=f"Guard execution error: {str(e)}"
             )

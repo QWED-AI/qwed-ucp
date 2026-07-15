@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Optional
 
+from qwed_ucp.types import TrustStatus
+
 
 # Common ISO 4217 currency codes
 VALID_CURRENCIES = {
@@ -32,9 +34,16 @@ VALID_CURRENCIES = {
 class CurrencyGuardResult:
     """Result from Currency Guard verification."""
     
-    verified: bool
+    verified: bool = True
+    status: Optional[TrustStatus] = None
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.status is not None:
+            self.verified = (self.status == TrustStatus.VERIFIED)
+        else:
+            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
 
 
 class CurrencyGuard:

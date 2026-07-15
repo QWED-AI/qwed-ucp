@@ -12,16 +12,25 @@ from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
 
+from qwed_ucp.types import TrustStatus
+
 
 @dataclass
 class FeeGuardResult:
     """Result from Fee Guard verification."""
     
-    verified: bool
+    verified: bool = True
+    status: Optional[TrustStatus] = None
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
+
+    def __post_init__(self):
+        if self.status is not None:
+            self.verified = (self.status == TrustStatus.VERIFIED)
+        else:
+            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
 
 
 class FeeGuard:

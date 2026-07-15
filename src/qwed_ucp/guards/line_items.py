@@ -10,14 +10,23 @@ from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
 
+from qwed_ucp.types import TrustStatus
+
 
 @dataclass
 class LineItemsGuardResult:
     """Result from Line Items Guard verification."""
     
-    verified: bool
+    verified: bool = True
+    status: Optional[TrustStatus] = None
     error: Optional[str] = None
     details: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.status is not None:
+            self.verified = (self.status == TrustStatus.VERIFIED)
+        else:
+            self.status = TrustStatus.VERIFIED if self.verified else TrustStatus.FAILED
 
 
 class LineItemsGuard:
