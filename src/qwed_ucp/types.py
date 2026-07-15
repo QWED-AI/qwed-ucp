@@ -33,9 +33,9 @@ _TRUST_SEVERITY_INDEX = {s: i for i, s in enumerate(_TRUST_SEVERITY)}
 
 def aggregate_status(statuses: list[TrustStatus]) -> TrustStatus:
     """Return the most-severe trust status from a list (fail-closed)."""
-    if not statuses:
-        return TrustStatus.FAILED
-    return min(statuses, key=lambda s: _TRUST_SEVERITY_INDEX.get(s, 0))
+    if any(s not in _TRUST_SEVERITY_INDEX for s in statuses):
+        return TrustStatus.ENGINE_ERROR
+    return min(statuses, key=lambda s: _TRUST_SEVERITY_INDEX[s], default=TrustStatus.FAILED)
 
 
 def reconcile_trust_status(

@@ -136,10 +136,10 @@ class UCPVerifier:
             result = self.money_guard.verify(checkout)
             return GuardResult(
                 guard_name="Money Guard",
-                status=result.status if hasattr(result, 'status') else None,
+                status=getattr(result, 'status', None),
                 verified=result.verified,
-                error=result.error if hasattr(result, 'error') else None,
-                details=result.details if hasattr(result, 'details') else {}
+                error=getattr(result, 'error', None),
+                details=getattr(result, 'details', {})
             )
         except Exception as e:
             return GuardResult(
@@ -155,10 +155,10 @@ class UCPVerifier:
             result = self.state_guard.verify(checkout)
             return GuardResult(
                 guard_name="State Guard",
-                status=result.status if hasattr(result, 'status') else None,
+                status=getattr(result, 'status', None),
                 verified=result.verified,
-                error=result.error if hasattr(result, 'error') else None,
-                details=result.details if hasattr(result, 'details') else {}
+                error=getattr(result, 'error', None),
+                details=getattr(result, 'details', {})
             )
         except Exception as e:
             return GuardResult(
@@ -174,10 +174,10 @@ class UCPVerifier:
             result = self.schema_guard.verify(checkout)
             return GuardResult(
                 guard_name="Structure Guard",
-                status=result.status if hasattr(result, 'status') else None,
+                status=getattr(result, 'status', None),
                 verified=result.verified,
-                error=result.error if hasattr(result, 'error') else None,
-                details=result.details if hasattr(result, 'details') else {}
+                error=getattr(result, 'error', None),
+                details=getattr(result, 'details', {})
             )
         except Exception as e:
             return GuardResult(

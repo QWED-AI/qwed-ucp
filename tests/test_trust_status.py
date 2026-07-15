@@ -123,3 +123,12 @@ class TestAggregateStatus:
     def test_quarantined_over_failed(self):
         statuses = [TrustStatus.FAILED, TrustStatus.QUARANTINED]
         assert aggregate_status(statuses) == TrustStatus.QUARANTINED
+
+    def test_unknown_entry_returns_engine_error(self):
+        assert aggregate_status([None]) == TrustStatus.ENGINE_ERROR
+        assert aggregate_status([TrustStatus.VERIFIED, None]) == TrustStatus.ENGINE_ERROR
+
+    def test_none_among_unknowns_returns_engine_error(self):
+        class FakeStatus:
+            pass
+        assert aggregate_status([FakeStatus(), TrustStatus.VERIFIED]) == TrustStatus.ENGINE_ERROR
