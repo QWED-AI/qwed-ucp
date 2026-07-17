@@ -47,7 +47,7 @@ QWED-UCP blocks these errors **before they reach a payment processor**.
 
 ### QWED-UCP IS:
 - **Verification middleware** that checks AI-generated UCP checkouts
-- **Deterministic** — uses Decimal math (no floating-point errors) and Z3 logic proofs
+- **Deterministic** — uses Decimal math (no floating-point errors) and state-machine logic
 - **Open source** (Apache 2.0) — integrate into any e-commerce workflow
 - **A safety layer** — catches calculation errors and invalid state transitions before payment
 
@@ -70,7 +70,7 @@ QWED-UCP blocks these errors **before they reach a payment processor**.
 | **Purpose** | Build carts, process payments | Verify calculations |
 | **Approach** | Trust AI outputs | Deterministically verify AI outputs |
 | **Accuracy** | ~99% (edge cases fail) | 100% deterministic |
-| **Tech** | Standard floating-point | Decimal + Z3 + JSON Schema |
+| **Tech** | Standard floating-point | Decimal + JSON Schema |
 | **Integration** | Replace your stack | Sits between AI and payment |
 | **Pricing** | Transaction fees | Free (Apache 2.0) |
 
@@ -87,20 +87,29 @@ QWED-UCP blocks these errors **before they reach a payment processor**.
 
 ## 🛡️ The Guards
 
-QWED-UCP ships **10 verification guards** that run as a fail-closed pipeline:
+QWED-UCP ships **10 verification guards**. `UCPVerifier.verify_checkout()` runs
+the 3 **core guards** as a fail-closed pipeline; the remaining 7 guards are
+available as standalone classes for manual or middleware use.
+
+### Core Guards (run by `verify_checkout()`)
 
 | Guard | Engine | What It Verifies |
 |-------|--------|------------------|
 | **Money Guard** | Decimal | Cart totals against UCP formula: `Total = Subtotal - Discount + Fulfillment + Tax + Fee` |
-| **State Guard** | Z3 SMT Solver | Checkout state machine (draft → ready → complete), rejects illegal transitions |
+| **State Guard** | Manual state logic | Checkout state machine (draft → ready → complete), rejects illegal transitions |
 | **Structure Guard** | JSON Schema | UCP schema compliance (v1.0) |
+
+### Standalone Guards
+
+| Guard | Engine | What It Verifies |
+|-------|--------|------------------|
 | **Line Item Guard** | Decimal | Item quantity × price = line total |
 | **Discount Guard** | Decimal | Percentage and fixed discount calculations |
 | **Currency Guard** | Decimal | Currency precision, $0.01 rounding, supported codes |
 | **Refund Guard** | Decimal | Full/partial refund amounts, tax reversals |
 | **Tip Guard** | Decimal | Pre/post-tax tip calculations, min/max bounds |
 | **Fee Guard** | Decimal | Service fees, delivery fees, platform fees |
-| **Attestation Guard** | JWT (PyJWT) | Context-bound attestation tokens with replay-attack protection |
+| **Attestation Guard** | JWT (PyJWT) | Context-bound attestation tokens with in-memory replay protection |
 
 ---
 
@@ -154,15 +163,21 @@ result = verifier.verify_totals_only(checkout)
 
 ## 📊 Interpreting Results
 
-Every guard result and the top-level `UCPVerificationResult` carry:
+### Shared Fields (all results)
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `verified` | `bool` | Convenience flag — `True` only when `status == TrustStatus.VERIFIED` |
 | `status` | `TrustStatus` | Typed trust verdict — see [Trust Status](#-trust-status) |
-| `engine` | `str` | `"QWED-Deterministic-v1"` |
 | `error` | `Optional[str]` | Error message when verification fails |
-| `guards` | `list[GuardResult]` | Individual guard outcomes (top-level result only) |
+
+### Top-Level Only (`UCPVerificationResult`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `engine` | `str` | `"QWED-Deterministic-v1"` |
+| `guards` | `list[GuardResult]` | Individual guard outcomes |
+| `verification_mode` | `str` | `"deterministic"` |
 
 ### Branching on `status` (preferred)
 
@@ -201,8 +216,9 @@ else:
 
 ### FastAPI Middleware
 
-QWED-UCP ships a configurable FastAPI/Starlette middleware that intercepts
-checkout requests and verifies them automatically:
+QWED-UCP ships a configurable FastAPI/Starlette middleware (requires Starlette,
+included with `pip install qwed-ucp`) that intercepts checkout requests and
+verifies them automatically:
 
 ```python
 from fastapi import FastAPI
@@ -281,8 +297,12 @@ def create_payment_intent(ucp_checkout):
     if not result.verified:
         raise ValueError(f"Checkout math error: {result.error}")
 
+    total = next(
+        item["amount"] for item in ucp_checkout["totals"]
+        if item["type"] == "total"
+    )
     return stripe.PaymentIntent.create(
-        amount=int(ucp_checkout["totals"][-1]["amount"] * 100),
+        amount=int(total * 100),
         currency=ucp_checkout["currency"].lower()
     )
 ```
@@ -324,7 +344,7 @@ result = verifier.verify_checkout(checkout)
 
 attestation = attester.sign_checkout(
     checkout=checkout,
-    verification_result=result,
+    verification_result=result,      # Accepts UCPVerificationResult directly
     transaction_attempt_id=str(uuid.uuid4()),
     request_nonce=str(uuid.uuid4()),
     session_id="sess_abc123"
@@ -334,8 +354,9 @@ attestation = attester.sign_checkout(
 ```
 
 `transaction_attempt_id` and `request_nonce` are **required** for context
-binding and replay-attack protection. Set `QWED_ATTESTATION_SECRET` env var
-instead of passing `secret_key` in code.
+binding and in-memory replay protection (not shared across replicas or
+restarts — use an external store for multi-instance deployment).
+Set `QWED_ATTESTATION_SECRET` env var instead of passing `secret_key` in code.
 
 ---
 

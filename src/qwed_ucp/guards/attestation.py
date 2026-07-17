@@ -59,7 +59,7 @@ class AttestationGuard:
     def sign_checkout(
         self,
         checkout: Dict[str, Any],
-        verification_result: Dict[str, Any],
+        verification_result: Any,
         guards_passed: list = None,
         *,
         transaction_attempt_id: str,
@@ -73,7 +73,8 @@ class AttestationGuard:
         
         Args:
             checkout: The UCP checkout object
-            verification_result: Result from UCPVerifier.verify_checkout()
+            verification_result: UCPVerificationResult (preferred) or dict with
+                "verified" and "errors" keys
             guards_passed: List of guards that passed (optional)
             transaction_attempt_id: Unique ID for this verification attempt
             request_nonce: One-time nonce bound to this verification event
@@ -89,6 +90,14 @@ class AttestationGuard:
                 raise ValueError("transaction_attempt_id is required for attestation")
             if not request_nonce:
                 raise ValueError("request_nonce is required for attestation")
+
+            # Accept both UCPVerificationResult dataclass and legacy dict
+            if hasattr(verification_result, "verified"):
+                verified = verification_result.verified
+                errors = [verification_result.error] if verification_result.error else []
+            else:
+                verified = verification_result.get("verified", False)
+                errors = verification_result.get("errors", [])
 
             # Create hash of checkout to link attestation without storing PII
             checkout_hash = hashlib.sha256(
@@ -107,9 +116,9 @@ class AttestationGuard:
                 "session_id": session_id,
                 "merchant_id": merchant_id,
                 "previous_attestation_id": previous_attestation_id,
-                "verified": verification_result.get("verified", False),
+                "verified": verified,
                 "guards_passed": guards_passed or [],
-                "errors": verification_result.get("errors", []),
+                "errors": errors,
                 "engine": "QWED-Deterministic-v1",
                 "verification_mode": "deterministic"
             }
