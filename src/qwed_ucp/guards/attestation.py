@@ -28,6 +28,19 @@ class AttestationResult:
         self.verified, self.status = reconcile_trust_status(self.verified, self.status)
 
 
+def _normalize_verification_result(verification_result):
+    """Extract verified/errors from UCPVerificationResult dataclass or legacy dict."""
+    if hasattr(verification_result, "verified"):
+        return (
+            verification_result.verified,
+            [verification_result.error] if verification_result.error else [],
+        )
+    return (
+        verification_result.get("verified", False),
+        verification_result.get("errors", []),
+    )
+
+
 class AttestationGuard:
     """
     Generates cryptographic proofs (JWTs) for UCP verification results.
@@ -91,13 +104,7 @@ class AttestationGuard:
             if not request_nonce:
                 raise ValueError("request_nonce is required for attestation")
 
-            # Accept both UCPVerificationResult dataclass and legacy dict
-            if hasattr(verification_result, "verified"):
-                verified = verification_result.verified
-                errors = [verification_result.error] if verification_result.error else []
-            else:
-                verified = verification_result.get("verified", False)
-                errors = verification_result.get("errors", [])
+            verified, errors = _normalize_verification_result(verification_result)
 
             # Create hash of checkout to link attestation without storing PII
             checkout_hash = hashlib.sha256(
@@ -214,7 +221,7 @@ class AttestationGuard:
     def create_receipt(
         self,
         checkout: Dict[str, Any],
-        verification_result: Dict[str, Any],
+        verification_result: Any,
         *,
         attestation_id: str,
         transaction_attempt_id: str,
@@ -225,7 +232,7 @@ class AttestationGuard:
         
         Args:
             checkout: The UCP checkout object
-            verification_result: Result from verification
+            verification_result: UCPVerificationResult (preferred) or dict
             attestation_id: Unique attestation ID for audit linkage
             transaction_attempt_id: Verification attempt binding
             previous_receipt_id: Optional audit-chain predecessor
@@ -233,6 +240,7 @@ class AttestationGuard:
         Returns:
             Receipt dictionary
         """
+        verified, errors = _normalize_verification_result(verification_result)
         receipt_id = f"QWED-{attestation_id.upper()}"
 
         return {
@@ -241,10 +249,10 @@ class AttestationGuard:
             "attestation_id": attestation_id,
             "transaction_attempt_id": transaction_attempt_id,
             "previous_receipt_id": previous_receipt_id,
-            "verified": verification_result.get("verified", False),
+            "verified": verified,
             "engine": "QWED-Deterministic-v1",
             "verification_mode": "deterministic",
-            "errors": verification_result.get("errors", [])
+            "errors": errors,
         }
 
     def _validate_attestation_context(
