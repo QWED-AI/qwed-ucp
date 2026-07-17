@@ -90,7 +90,7 @@ function createQWEDUCPMiddleware(options = {}) {
 
             return res.status(500).json({
                 error: 'QWED-UCP Verification Failed',
-                message: 'Internal verification error: cannot verify unparseable payload',
+                message: 'Internal verification error: verification could not be completed',
                 code: 'INTERNAL_VERIFICATION_ERROR'
             });
         }
