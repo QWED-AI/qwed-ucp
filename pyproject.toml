@@ -25,6 +25,7 @@ requires-python = ">=3.10"
 dependencies = [
     "jsonschema>=4.0.0",
     "PyJWT>=2.4.0",
+    "starlette>=0.27.0",
 ]
 
 [project.optional-dependencies]

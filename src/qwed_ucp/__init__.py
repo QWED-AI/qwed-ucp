@@ -2,14 +2,16 @@
 
 from qwed_ucp.core import UCPVerifier, UCPVerificationResult, GuardResult, TrustStatus
 from qwed_ucp.guards import (
-    MoneyGuard, StateGuard, DiscountGuard, CurrencyGuard,
-    RefundGuard, TipGuard, FeeGuard, AttestationGuard
+    MoneyGuard, StateGuard, SchemaGuard, LineItemsGuard,
+    DiscountGuard, CurrencyGuard, RefundGuard, TipGuard,
+    FeeGuard, AttestationGuard,
 )
 
 __all__ = [
     "UCPVerifier", "UCPVerificationResult", "GuardResult", "TrustStatus",
-    "MoneyGuard", "StateGuard", "DiscountGuard", "CurrencyGuard",
-    "RefundGuard", "TipGuard", "FeeGuard", "AttestationGuard"
+    "MoneyGuard", "StateGuard", "SchemaGuard", "LineItemsGuard",
+    "DiscountGuard", "CurrencyGuard", "RefundGuard", "TipGuard",
+    "FeeGuard", "AttestationGuard",
 ]
 __version__ = "0.2.0"
 

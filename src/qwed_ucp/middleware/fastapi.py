@@ -125,10 +125,14 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
                 "details": [],
             }, code="UNPARSEABLE_REQUEST")
         
-        # Run verification
+        # Run verification — MUST reject before call_next so the handler
+        # never executes with an invalid checkout (fail-closed ordering).
         verification_result = self._verify_checkout(checkout_data)
         
-        # Add verification headers
+        if not verification_result["verified"] and self.block_on_failure:
+            return self._create_error_response(verification_result)
+        
+        # Only reach the handler when verification passes
         response = await call_next(request)
         
         if verification_result["verified"]:
@@ -139,9 +143,6 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
         else:
             response.headers["X-QWED-Verified"] = "false"
             response.headers["X-QWED-Error"] = verification_result.get("error", "Unknown")
-            
-            if self.block_on_failure:
-                return self._create_error_response(verification_result)
         
         return response
     
