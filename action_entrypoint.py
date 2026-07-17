@@ -3,17 +3,46 @@ import sys
 import json
 from qwed_ucp.core import UCPVerifier
 
+
+def _safe_resolve(path: str) -> str:
+    """Resolve and validate path against the sandbox base directory.
+
+    In GitHub Actions, the canonical sandbox is $GITHUB_WORKSPACE. Locally,
+    fall back to the current working directory. Reject any path that escapes
+    the sandbox after resolving ../, symlinks, and relative components.
+
+    Prevents partial path traversal by ensuring the base dir ends with the
+    OS separator before the startswith check (e.g. so "/data/resources-evil"
+    does not match "/data/resources").
+    """
+    base = os.path.realpath(os.environ.get("GITHUB_WORKSPACE") or os.getcwd())
+    # Ensure trailing separator so "/foo" does not match "/foo-evil"
+    if not base.endswith(os.sep):
+        base = base + os.sep
+    resolved = os.path.realpath(path)
+    if resolved != base[:-1] and not resolved.startswith(base):
+        raise ValueError(
+            f"path {path!r} resolves to {resolved!r} which is outside the "
+            f"allowed sandbox {base!r}"
+        )
+    return resolved
+
+
 def main():
     # 1. Capture Inputs
-    # GitHub Actions passes inputs as arguments or env vars. 
+    # GitHub Actions passes inputs as arguments or env vars.
     # Composite uses env vars usually. Docker args usage:
     # args: ${{ inputs.transaction-file }} -> sys.argv[1]
-    
+
     if len(sys.argv) < 2:
         print("❌ Error: Missing transaction-file argument")
         sys.exit(1)
-        
-    file_path = sys.argv[1]
+
+    try:
+        file_path = _safe_resolve(sys.argv[1])
+    except ValueError as e:
+        print(f"❌ Security: {e}")
+        sys.exit(1)
     print(f"🚀 Starting UCP Audit on: {file_path}")
 
     if not os.path.exists(file_path):
@@ -24,10 +53,10 @@ def main():
     try:
         with open(file_path, 'r') as f:
             data = json.load(f)
-            
+
         # Support list of transactions or single object
         transactions = data if isinstance(data, list) else [data]
-        
+
     except Exception as e:
         print(f"❌ JSON Load Error: {e}")
         sys.exit(1)

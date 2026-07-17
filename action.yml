@@ -1,5 +1,5 @@
 name: 'QWED Commerce Auditor'
-description: 'Verify Universal Commerce Protocol (UCP) transactions using SymPy and Z3.'
+description: 'Verify Universal Commerce Protocol (UCP) transactions — deterministic Decimal + JSON Schema guards.'
 author: 'QWED-AI'
 branding:
   icon: 'shield'
