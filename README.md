@@ -298,9 +298,12 @@ def create_payment_intent(ucp_checkout):
         raise ValueError(f"Checkout math error: {result.error}")
 
     total = next(
-        item["amount"] for item in ucp_checkout["totals"]
-        if item["type"] == "total"
+        (item["amount"] for item in ucp_checkout["totals"]
+         if item["type"] == "total"),
+        None
     )
+    if total is None:
+        raise ValueError("Missing required 'total' entry in checkout.totals")
     return stripe.PaymentIntent.create(
         amount=int(total * 100),
         currency=ucp_checkout["currency"].lower()
@@ -388,7 +391,7 @@ result, replacing the old `verified: bool`-only model:
 |---------|-------------------|
 | **Data Transmission** | No API calls, no cloud processing |
 | **Storage** | Nothing stored — pure computation |
-| **Dependencies** | Local-only (Decimal, Z3, JSON Schema, PyJWT) |
+| **Dependencies** | Local-only (Decimal, JSON Schema, PyJWT, Starlette) |
 | **PCI Compliance** | No cardholder data processed |
 
 Perfect for: e-commerce with strict privacy requirements, transactions
@@ -452,8 +455,7 @@ with `type` and `amount` fields.
 <summary><b>How fast is verification?</b></summary>
 
 Sub-millisecond to low milliseconds per checkout, depending on the guard set.
-The Decimal math engine is optimized for currency calculations; Z3 state checks
-are typically under 1ms.
+The Decimal math engine is optimized for currency calculations.
 </details>
 
 <details>
