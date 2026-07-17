@@ -20,4 +20,4 @@ RUN uv sync --frozen
 COPY action_entrypoint.py /action_entrypoint.py
 RUN chmod +x /action_entrypoint.py
 
-ENTRYPOINT ["uv", "run", "python", "/action_entrypoint.py"]
+ENTRYPOINT ["uv", "run", "--project", "/app", "python", "/action_entrypoint.py"]

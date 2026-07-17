@@ -63,14 +63,17 @@ class TestSafeResolveRejectsTraversal:
 
     def test_absolute_outside_rejected(self, tmp_path, monkeypatch):
         monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
+        target = os.path.abspath("/etc/passwd")
         with pytest.raises(ValueError, match="outside the allowed sandbox"):
-            _safe_resolve(os.path.abspath("/etc/passwd"))
+            _safe_resolve(target)
 
     def test_symlink_escape_rejected(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path))
-        outside = tmp_path.parent / "outside_target.json"
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        monkeypatch.setenv("GITHUB_WORKSPACE", str(workspace))
+        outside = tmp_path / "outside_target.json"
         outside.write_text("{}", encoding="utf-8")
-        link = tmp_path / "escape.json"
+        link = workspace / "escape.json"
         try:
             os.symlink(str(outside), link)
         except OSError:
@@ -92,5 +95,6 @@ class TestSafeResolvePartialPathTraversal:
         (evil / "secret.json").write_text("{}", encoding="utf-8")
         monkeypatch.setenv("GITHUB_WORKSPACE", str(base))
         # Construct absolute path to evil sibling — must not match base prefix.
+        target = str(evil / "secret.json")
         with pytest.raises(ValueError, match="outside the allowed sandbox"):
-            _safe_resolve(str(evil / "secret.json"))
+            _safe_resolve(target)
