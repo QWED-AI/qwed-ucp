@@ -51,8 +51,8 @@ def main():
         sys.exit(1)
     print(f"🚀 Starting UCP Audit on: {file_path}")
 
-    if not os.path.exists(file_path):
-        print(f"❌ Error: File not found: {file_path}")
+    if not os.path.isfile(file_path):
+        print(f"❌ Error: Not a file (or not found): {file_path}")
         sys.exit(1)
 
     # 2. Load Transactions
