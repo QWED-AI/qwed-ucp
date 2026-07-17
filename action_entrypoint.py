@@ -19,7 +19,13 @@ def _safe_resolve(path: str) -> str:
     # Ensure trailing separator so "/foo" does not match "/foo-evil"
     if not base.endswith(os.sep):
         base = base + os.sep
-    resolved = os.path.realpath(path)
+    # Join relative inputs to the sandbox base before resolving so they
+    # resolve against $GITHUB_WORKSPACE, not the process cwd (Docker
+    # container uses WORKDIR /app which differs from the workspace).
+    if os.path.isabs(path):
+        resolved = os.path.realpath(path)
+    else:
+        resolved = os.path.realpath(os.path.join(base, path))
     if resolved != base[:-1] and not resolved.startswith(base):
         raise ValueError(
             f"path {path!r} resolves to {resolved!r} which is outside the "
@@ -56,6 +62,8 @@ def main():
 
         # Support list of transactions or single object
         transactions = data if isinstance(data, list) else [data]
+        if any(not isinstance(txn, dict) for txn in transactions):
+            raise ValueError("All transactions must be JSON objects")
 
     except Exception as e:
         print(f"❌ JSON Load Error: {e}")
