@@ -65,12 +65,18 @@ function createQWEDUCPMiddleware(options = {}) {
             res.set('X-QWED-Guards-Passed', result.guardsPassed.toString());
 
             if (result.verified) {
-                if (onVerified) await Promise.resolve(onVerified(result, req));
+                if (onVerified) {
+                    try { await Promise.resolve(onVerified(result, req)); }
+                    catch (e) { console.error('QWED-UCP onVerified callback error:', e); }
+                }
                 return next();
             } else {
                 res.set('X-QWED-Error', result.error || 'Verification failed');
 
-                if (onFailed) await Promise.resolve(onFailed(result, req));
+                if (onFailed) {
+                    try { await Promise.resolve(onFailed(result, req)); }
+                    catch (e) { console.error('QWED-UCP onFailed callback error:', e); }
+                }
 
                 if (blockOnFailure) {
                     return res.status(422).json({
