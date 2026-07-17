@@ -4,17 +4,17 @@ FROM python:3.14.6-slim
 # Prevent python from writing pyc files to disc
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# Force UTF-8 output so emoji and other non-ASCII prints don't crash
+ENV PYTHONUTF8=1
 
-# Install dependencies
-# Since qwed-ucp is not on PyPI yet (v0.1.0), we install from local or assume it's COPY'd.
-# Ideally we pip install ., but here we will COPY src.
+# Install uv (pinned version) for reproducible builds from uv.lock
+COPY --from=ghcr.io/astral-sh/uv:0.11.29 /uv /usr/local/bin/uv
 
 WORKDIR /app
 COPY . /app
-RUN pip install .
+# Install the project with --frozen so uv.lock pins are enforced.
+# If uv.lock is out of sync with pyproject.toml, the build fails.
+RUN uv sync --frozen
 
-# Entrypoint
-COPY action_entrypoint.py /action_entrypoint.py
-RUN chmod +x /action_entrypoint.py
-
-ENTRYPOINT ["python", "/action_entrypoint.py"]
+# action_entrypoint.py is already under /app via COPY . /app above
+ENTRYPOINT ["uv", "run", "--project", "/app", "python", "/app/action_entrypoint.py"]
