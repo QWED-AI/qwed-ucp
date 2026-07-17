@@ -97,9 +97,11 @@ function rejectUnparseableBody(req, res) {
 
 function invokeCallback(cb, result, req, name) {
     if (!cb) return;
-    Promise.resolve(cb(result, req)).catch(e => {
-        console.error(`QWED-UCP ${name} callback error:`, e);
-    });
+    Promise.resolve()
+        .then(() => cb(result, req))
+        .catch(e => {
+            console.error(`QWED-UCP ${name} callback error:`, e);
+        });
 }
 
 /**
