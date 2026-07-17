@@ -65,12 +65,12 @@ function createQWEDUCPMiddleware(options = {}) {
             res.set('X-QWED-Guards-Passed', result.guardsPassed.toString());
 
             if (result.verified) {
-                if (onVerified) onVerified(result, req);
+                if (onVerified) await Promise.resolve(onVerified(result, req));
                 return next();
             } else {
                 res.set('X-QWED-Error', result.error || 'Verification failed');
 
-                if (onFailed) onFailed(result, req);
+                if (onFailed) await Promise.resolve(onFailed(result, req));
 
                 if (blockOnFailure) {
                     return res.status(422).json({
