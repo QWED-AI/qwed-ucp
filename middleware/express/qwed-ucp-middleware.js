@@ -85,10 +85,14 @@ function createQWEDUCPMiddleware(options = {}) {
             }
         } catch (error) {
             console.error('QWED-UCP Middleware Error:', error);
+            res.set('X-QWED-Verified', 'false');
             res.set('X-QWED-Error', 'Internal verification error');
 
-            // Don't block on internal errors, let the request through
-            return next();
+            return res.status(500).json({
+                error: 'QWED-UCP Verification Failed',
+                message: 'Internal verification error: cannot verify unparseable payload',
+                code: 'INTERNAL_VERIFICATION_ERROR'
+            });
         }
     };
 }

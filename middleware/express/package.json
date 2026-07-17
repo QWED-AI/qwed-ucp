@@ -36,6 +36,7 @@
     "files": [
         "index.js",
         "index.d.ts",
+        "qwed-ucp-middleware.js",
         "README.md",
         "LICENSE"
     ]
