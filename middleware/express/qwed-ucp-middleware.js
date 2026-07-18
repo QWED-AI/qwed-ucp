@@ -25,7 +25,6 @@ const http = require('http');
  */
 function createQWEDUCPMiddleware(options = {}) {
     const {
-        apiUrl = 'http://localhost:8000',
         verifyPaths = ['/checkout', '/checkout-sessions', '/payment', '/cart'],
         verifyMethods = ['POST', 'PUT', 'PATCH'],
         blockOnFailure = true,
@@ -34,63 +33,75 @@ function createQWEDUCPMiddleware(options = {}) {
     } = options;
 
     return async function qwedUCPMiddleware(req, res, next) {
-        // Check if this request should be verified
-        if (!verifyMethods.includes(req.method)) {
+        if (!shouldVerifyRequest(req, verifyMethods, verifyPaths)) {
             return next();
         }
 
-        const shouldVerify = verifyPaths.some(path => req.path.includes(path));
-        if (!shouldVerify) {
-            return next();
-        }
-
-        // Get checkout data from request body
-        const checkoutData = req.body;
-        if (!req.is('application/json') || !checkoutData || typeof checkoutData !== 'object' || Array.isArray(checkoutData)) {
-            res.set('X-QWED-Verified', 'false');
-            res.set('X-QWED-Error', 'Empty or non-JSON body: cannot verify');
-            return res.status(422).json({
-                error: 'QWED-UCP Verification Failed',
-                message: 'Empty or non-JSON request body: cannot verify unparseable payload',
-                code: 'UNPARSEABLE_REQUEST'
-            });
-        }
+        if (rejectUnparseableBody(req, res)) return;
 
         try {
-            // Verify using local guards (no API call needed for basic checks)
-            const result = verifyCheckoutLocally(checkoutData);
-
-            // Set verification headers
+            const result = verifyCheckoutLocally(req.body);
             res.set('X-QWED-Verified', result.verified.toString());
             res.set('X-QWED-Guards-Passed', result.guardsPassed.toString());
 
             if (result.verified) {
-                if (onVerified) onVerified(result, req);
-                return next();
-            } else {
-                res.set('X-QWED-Error', result.error || 'Verification failed');
-
-                if (onFailed) onFailed(result, req);
-
-                if (blockOnFailure) {
-                    return res.status(422).json({
-                        error: 'QWED-UCP Verification Failed',
-                        message: result.error,
-                        code: 'VERIFICATION_FAILED',
-                        details: result.details
-                    });
-                }
-
+                invokeCallback(onVerified, result, req, 'onVerified');
                 return next();
             }
+
+            res.set('X-QWED-Error', result.error || 'Verification failed');
+            invokeCallback(onFailed, result, req, 'onFailed');
+
+            if (blockOnFailure) {
+                return res.status(422).json({
+                    error: 'QWED-UCP Verification Failed',
+                    message: result.error,
+                    code: 'VERIFICATION_FAILED',
+                    details: result.details
+                });
+            }
+
+            return next();
         } catch (error) {
             console.error('QWED-UCP Middleware Error:', error);
+            res.set('X-QWED-Verified', 'false');
             res.set('X-QWED-Error', 'Internal verification error');
 
-            // Don't block on internal errors, let the request through
-            return next();
+            return res.status(500).json({
+                error: 'QWED-UCP Verification Failed',
+                message: 'Internal verification error: verification could not be completed',
+                code: 'INTERNAL_VERIFICATION_ERROR'
+            });
         }
     };
+}
+
+function shouldVerifyRequest(req, methods, paths) {
+    if (!methods.includes(req.method)) return false;
+    return paths.some(path => req.path.includes(path));
+}
+
+function rejectUnparseableBody(req, res) {
+    if (req.is('application/json') && req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
+        return false;
+    }
+    res.set('X-QWED-Verified', 'false');
+    res.set('X-QWED-Error', 'Empty or non-JSON body: cannot verify');
+    res.status(422).json({
+        error: 'QWED-UCP Verification Failed',
+        message: 'Empty or non-JSON request body: cannot verify unparseable payload',
+        code: 'UNPARSEABLE_REQUEST'
+    });
+    return true;
+}
+
+function invokeCallback(cb, result, req, name) {
+    if (!cb) return;
+    Promise.resolve()
+        .then(() => cb(result, req))
+        .catch(e => {
+            console.error(`QWED-UCP ${name} callback error:`, e);
+        });
 }
 
 /**
