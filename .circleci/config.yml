@@ -1,0 +1,80 @@
+version: 2.1
+
+jobs:
+  lint:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Install ruff
+          command: pip install ruff
+      - run:
+          name: Lint with ruff
+          command: ruff check src/ tests/
+
+  build-and-test:
+    parameters:
+      python-version:
+        type: string
+    docker:
+      - image: cimg/python:<< parameters.python-version >>
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - pip-v1-{{ checksum "pyproject.toml" }}-<< parameters.python-version >>
+            - pip-v1-
+      - run:
+          name: Install dependencies
+          command: |
+            pip install --user -e ".[dev]"
+      - save_cache:
+          key: pip-v1-{{ checksum "pyproject.toml" }}-<< parameters.python-version >>
+          paths:
+            - ~/.local/lib/python<< parameters.python-version >>/site-packages
+            - ~/.cache/pip
+      - run:
+          name: Run tests
+          command: |
+            mkdir -p test-results
+            PYTHONPATH=src pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml --cov-report=html --junitxml=test-results/results.xml
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: htmlcov
+
+  security-scan:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Create isolated audit environment
+          command: |
+            python -m venv /tmp/audit-env
+            /tmp/audit-env/bin/pip install --upgrade pip
+            /tmp/audit-env/bin/pip install -e .
+      - run:
+          name: Run pip-audit (project deps only)
+          command: |
+            set -o pipefail
+            /tmp/audit-env/bin/pip freeze --exclude qwed-ucp > /tmp/audit-requirements.txt
+            /tmp/audit-env/bin/pip install pip-audit
+            /tmp/audit-env/bin/pip-audit --strict --desc \
+              -r /tmp/audit-requirements.txt \
+              2>&1 | tee audit-results.txt
+      - store_artifacts:
+          path: audit-results.txt
+
+workflows:
+  ci:
+    jobs:
+      - lint
+      - build-and-test:
+          matrix:
+            parameters:
+              python-version: ["3.10", "3.11", "3.12"]
+      - security-scan:
+          requires:
+            - build-and-test
