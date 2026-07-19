@@ -6,27 +6,39 @@ steps:
     timeout_in_minutes: 5
 
   - label: ":python: Test (3.10)"
+    plugins:
+      - docker#v5.11.0:
+          image: "python:3.10"
     commands:
       - pip install --upgrade pip
       - pip install -e ".[dev]"
-      - PYTHONPATH=src pytest tests/ -q --timeout=30 -p no:cacheprovider
+      - PYTHONPATH=src pytest tests/ -q --timeout=30 --cov=qwed_ucp --cov-report=xml
     timeout_in_minutes: 10
 
   - label: ":python: Test (3.11)"
+    plugins:
+      - docker#v5.11.0:
+          image: "python:3.11"
     commands:
       - pip install --upgrade pip
       - pip install -e ".[dev]"
-      - PYTHONPATH=src pytest tests/ -q --timeout=30 -p no:cacheprovider
+      - PYTHONPATH=src pytest tests/ -q --timeout=30 --cov=qwed_ucp --cov-report=xml
     timeout_in_minutes: 10
 
   - label: ":python: Test (3.12)"
+    plugins:
+      - docker#v5.11.0:
+          image: "python:3.12"
     commands:
       - pip install --upgrade pip
       - pip install -e ".[dev]"
-      - PYTHONPATH=src pytest tests/ -q --timeout=30 -p no:cacheprovider
+      - PYTHONPATH=src pytest tests/ -q --timeout=30 --cov=qwed_ucp --cov-report=xml
     timeout_in_minutes: 10
 
   - label: ":locked: Security scan"
+    plugins:
+      - docker#v5.11.0:
+          image: "python:3.12"
     commands:
       - pip install --upgrade pip
       - pip install -e .
