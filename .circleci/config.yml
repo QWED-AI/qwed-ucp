@@ -28,8 +28,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install --user pytest pytest-cov
-            pip install --user -e .
+            pip install --user -e ".[dev]"
       - save_cache:
           key: pip-v1-{{ checksum "pyproject.toml" }}-<< parameters.python-version >>
           paths:
