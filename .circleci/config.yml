@@ -1,8 +1,5 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@2.1.1
-
 jobs:
   lint:
     docker:
@@ -31,8 +28,8 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install pytest pytest-cov jsonschema starlette httpx
-            pip install -e .
+            pip install --user pytest pytest-cov
+            pip install --user -e .
       - save_cache:
           key: pip-v1-{{ checksum "pyproject.toml" }}-<< parameters.python-version >>
           paths:
@@ -42,7 +39,7 @@ jobs:
           name: Run tests
           command: |
             mkdir -p test-results
-            PYTHONPATH=src pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml --junitxml=test-results/results.xml
+            PYTHONPATH=src pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml --cov-report=html --junitxml=test-results/results.xml
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -58,13 +55,11 @@ jobs:
           command: |
             python -m venv /tmp/audit-env
             /tmp/audit-env/bin/pip install --upgrade pip
-            /tmp/audit-env/bin/pip install jsonschema PyJWT starlette
             /tmp/audit-env/bin/pip install -e .
       - run:
           name: Run pip-audit (project deps only)
           command: |
             set -o pipefail
-            # Snapshot only project dependencies before adding audit tooling
             /tmp/audit-env/bin/pip freeze --exclude qwed-ucp > /tmp/audit-requirements.txt
             /tmp/audit-env/bin/pip install pip-audit
             /tmp/audit-env/bin/pip-audit --strict --desc \
