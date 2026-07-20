@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "qwed-ucp"
-version = "0.2.0"
+version = "0.3.0"
 description = "QWED verification for Universal Commerce Protocol (UCP) transactions"
 readme = "README.md"
 license = {text = "Apache-2.0"}

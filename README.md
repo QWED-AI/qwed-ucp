@@ -365,7 +365,7 @@ Set `QWED_ATTESTATION_SECRET` env var instead of passing `secret_key` in code.
 
 ## 🏷️ Trust Status
 
-QWED-UCP v0.2.0+ exposes a typed `TrustStatus` enum on every verification
+QWED-UCP v0.3.0+ exposes a typed `TrustStatus` enum on every verification
 result, replacing the old `verified: bool`-only model:
 
 | State | Meaning |
@@ -401,7 +401,7 @@ containing PII, PCI-DSS compliant environments.
 
 ## 🗺️ Roadmap
 
-### v0.2.0 (Current)
+### v0.3.0 (Current)
 - [x] UCPVerifier with 3 core guards (Money, State, Structure)
 - [x] All 10 guards shipped and tested
 - [x] TrustStatus enum on every result
