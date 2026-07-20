@@ -1,6 +1,6 @@
 {
     "name": "qwed-ucp",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "description": "Verification guards for Universal Commerce Protocol (UCP) - Catch AI math errors before payment",
     "main": "index.js",
     "types": "index.d.ts",
