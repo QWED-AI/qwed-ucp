@@ -6,8 +6,8 @@
 __all__: list[str] = []
 
 try:
-    from .fastapi import QWEDUCPMiddleware as _Middleware  # noqa: F401
-    from .fastapi import create_verification_dependency as _create_dep  # noqa: F401
+    from .fastapi import QWEDUCPMiddleware as _Middleware
+    from .fastapi import create_verification_dependency as _create_dep
     
     # Re-export with proper names
     QWEDUCPMiddleware = _Middleware

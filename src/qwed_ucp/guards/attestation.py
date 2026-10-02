@@ -1,13 +1,14 @@
-import jwt
-import time
-import json
 import hashlib
+import json
 import os
 import secrets
 import threading
+import time
 import uuid
-from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
+from typing import Any
+
+import jwt
 
 from qwed_ucp.types import TrustStatus, reconcile_trust_status
 
@@ -16,13 +17,13 @@ from qwed_ucp.types import TrustStatus, reconcile_trust_status
 class AttestationResult:
     """Result from attestation signing."""
     
-    token: Optional[str] = None
+    token: str | None = None
     verified: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     details: dict = field(default_factory=dict)
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
-    status: Optional[TrustStatus] = None
+    status: TrustStatus | None = None
 
     def __post_init__(self):
         self.verified, self.status = reconcile_trust_status(self.verified, self.status)
@@ -71,15 +72,15 @@ class AttestationGuard:
     
     def sign_checkout(
         self,
-        checkout: Dict[str, Any],
+        checkout: dict[str, Any],
         verification_result: Any,
         guards_passed: list = None,
         *,
         transaction_attempt_id: str,
         request_nonce: str,
-        session_id: Optional[str] = None,
-        merchant_id: Optional[str] = None,
-        previous_attestation_id: Optional[str] = None,
+        session_id: str | None = None,
+        merchant_id: str | None = None,
+        previous_attestation_id: str | None = None,
     ) -> AttestationResult:
         """
         Create a JWT attesting that a checkout was verified.
@@ -159,8 +160,8 @@ class AttestationGuard:
         *,
         expected_transaction_attempt_id: str,
         expected_request_nonce: str,
-        expected_session_id: Optional[str] = None,
-        expected_merchant_id: Optional[str] = None,
+        expected_session_id: str | None = None,
+        expected_merchant_id: str | None = None,
         consume: bool = True,
     ) -> AttestationResult:
         """
@@ -220,13 +221,13 @@ class AttestationGuard:
     
     def create_receipt(
         self,
-        checkout: Dict[str, Any],
+        checkout: dict[str, Any],
         verification_result: Any,
         *,
         attestation_id: str,
         transaction_attempt_id: str,
-        previous_receipt_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        previous_receipt_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a verification receipt (non-cryptographic summary).
         
@@ -257,12 +258,12 @@ class AttestationGuard:
 
     def _validate_attestation_context(
         self,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         expected_transaction_attempt_id: str,
         expected_request_nonce: str,
-        expected_session_id: Optional[str],
-        expected_merchant_id: Optional[str],
+        expected_session_id: str | None,
+        expected_merchant_id: str | None,
     ) -> None:
         """Fail closed when attestation context does not match expected event binding."""
         required_fields = {

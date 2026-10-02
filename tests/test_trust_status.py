@@ -1,7 +1,7 @@
 """Tests for TrustStatus enum and typed trust verdicts."""
 
-from qwed_ucp.types import TrustStatus, aggregate_status
 from qwed_ucp.core import GuardResult, UCPVerificationResult, UCPVerifier
+from qwed_ucp.types import TrustStatus, aggregate_status
 
 
 class TestTrustStatusEnum:

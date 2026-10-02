@@ -1,12 +1,12 @@
 """Tests for Advanced Guards - Line Items, Discount, Currency."""
 
-import pytest
 from decimal import Decimal
 
-from qwed_ucp.guards.line_items import LineItemsGuard
-from qwed_ucp.guards.discount import DiscountGuard
-from qwed_ucp.guards.currency import CurrencyGuard
+import pytest
 
+from qwed_ucp.guards.currency import CurrencyGuard
+from qwed_ucp.guards.discount import DiscountGuard
+from qwed_ucp.guards.line_items import LineItemsGuard
 
 # =============================================================================
 # Line Items Guard Tests

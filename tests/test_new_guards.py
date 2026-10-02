@@ -1,12 +1,12 @@
 """Tests for New Guards - Refund, Tip, Fee."""
 
-import pytest
 from decimal import Decimal
 
+import pytest
+
+from qwed_ucp.guards.fee import FeeGuard
 from qwed_ucp.guards.refund import RefundGuard
 from qwed_ucp.guards.tip import TipGuard
-from qwed_ucp.guards.fee import FeeGuard
-
 
 # =============================================================================
 # Refund Guard Tests

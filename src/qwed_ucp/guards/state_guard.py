@@ -1,5 +1,7 @@
-from z3 import Solver, String, Implies, Or, sat
-from typing import Dict, Any
+from typing import Any
+
+from z3 import Implies, Or, Solver, String, sat
+
 
 class StateGuard:
     """
@@ -9,7 +11,7 @@ class StateGuard:
     def __init__(self):
         self.solver = Solver()
         
-    def verify_transition(self, current_state: str, action: str) -> Dict[str, Any]:
+    def verify_transition(self, current_state: str, action: str) -> dict[str, Any]:
         """
         Verifies if an action is legally allowed in the current commerce state.
         """
