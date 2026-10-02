@@ -56,7 +56,8 @@ jobs:
 
       - name: Install ruff
         # Pinned so CI does not silently resolve a new ruff release.
-        run: pip install --only-binary :all: ruff==0.16.1
+        # (Quoted: ":all:" would otherwise break plain-scalar YAML parsing.)
+        run: 'pip install --only-binary :all: ruff==0.16.1'
 
       - name: Lint with ruff
         run: ruff check src/ tests/
