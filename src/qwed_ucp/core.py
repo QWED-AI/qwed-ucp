@@ -1,12 +1,12 @@
 """Core UCPVerifier class for verifying UCP transactions."""
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from qwed_ucp.guards.money import MoneyGuard
-from qwed_ucp.guards.state import StateGuard
 from qwed_ucp.guards.schema import SchemaGuard
-from qwed_ucp.types import TrustStatus, reconcile_trust_status, aggregate_status
+from qwed_ucp.guards.state import StateGuard
+from qwed_ucp.types import TrustStatus, aggregate_status, reconcile_trust_status
 
 
 @dataclass
@@ -15,9 +15,9 @@ class GuardResult:
     
     guard_name: str
     verified: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     details: dict = field(default_factory=dict)
-    status: Optional[TrustStatus] = None
+    status: TrustStatus | None = None
     
     def __post_init__(self):
         self.verified, self.status = reconcile_trust_status(self.verified, self.status)
@@ -29,10 +29,10 @@ class UCPVerificationResult:
     
     verified: bool = False
     guards: list[GuardResult] = field(default_factory=list)
-    error: Optional[str] = None
+    error: str | None = None
     engine: str = "QWED-Deterministic-v1"
     verification_mode: str = "deterministic"
-    status: Optional[TrustStatus] = None
+    status: TrustStatus | None = None
     
     def __post_init__(self):
         self.verified, self.status = reconcile_trust_status(self.verified, self.status)

@@ -1,12 +1,13 @@
 from decimal import Decimal
-from typing import List, Dict, Any
+from typing import Any
+
 
 class MoneyGuard:
     """
     Verifies cart totals deterministically using SymPy to avoid floating point errors.
     Prevents 'Math Hallucinations' in Agentic Commerce.
     """
-    def verify_cart_totals(self, line_items: List[Dict[str, Any]], taxes: float, discounts: float, claimed_total: float) -> Dict[str, Any]:
+    def verify_cart_totals(self, line_items: list[dict[str, Any]], taxes: float, discounts: float, claimed_total: float) -> dict[str, Any]:
         """
         Verifies: Sum(Items) + Tax - Discount == Total
         """

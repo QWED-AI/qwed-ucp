@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from typing import Optional, Tuple
 
 
 class TrustStatus(Enum):
@@ -39,8 +38,8 @@ def aggregate_status(statuses: list[TrustStatus]) -> TrustStatus:
 
 
 def reconcile_trust_status(
-    verified: bool, status: Optional[TrustStatus]
-) -> Tuple[bool, TrustStatus]:
+    verified: bool, status: TrustStatus | None
+) -> tuple[bool, TrustStatus]:
     """Reconcile verified/status pair: explicit status takes precedence.
     
     Used in ``__post_init__`` of every result dataclass to keep logic

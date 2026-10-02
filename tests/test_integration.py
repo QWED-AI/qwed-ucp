@@ -6,13 +6,13 @@ based on the official UCP samples repository.
 Test Data Source: https://github.com/Universal-Commerce-Protocol/samples
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from qwed_ucp.core import UCPVerifier
 from qwed_ucp.guards.money import MoneyGuard
 from qwed_ucp.guards.state import StateGuard
-
 
 # =============================================================================
 # UCP Flower Shop Test Data (from ucp-samples/rest/python/test_data/flower_shop)

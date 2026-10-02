@@ -24,7 +24,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "jsonschema>=4.0.0",
-    "PyJWT>=2.4.0",
+    "PyJWT>=2.15.0",
     "starlette>=0.27.0",
 ]
 
@@ -41,6 +41,17 @@ dev = [
 Homepage = "https://github.com/QWED-AI/qwed-ucp"
 Documentation = "https://github.com/QWED-AI/qwed-ucp#readme"
 Repository = "https://github.com/QWED-AI/qwed-ucp"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["F", "I", "UP", "B", "RUF022", "RUF100"]
+ignore = ["B018", "BLE001", "RUF012", "RUF013", "SIM102"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["qwed_ucp"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/qwed_ucp"]

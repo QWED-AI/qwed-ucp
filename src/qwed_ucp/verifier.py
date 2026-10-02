@@ -1,6 +1,8 @@
-from typing import Dict, Any
+from typing import Any
+
 from .guards.money_guard import MoneyGuard
 from .guards.state_guard import StateGuard
+
 
 class UCPVerifier:
     """
@@ -11,7 +13,7 @@ class UCPVerifier:
         self.money = MoneyGuard()
         self.state = StateGuard()
 
-    def verify_checkout(self, checkout_json: Dict[str, Any]) -> Dict[str, Any]:
+    def verify_checkout(self, checkout_json: dict[str, Any]) -> dict[str, Any]:
         """
         Main entry point for Universal Commerce Protocol verification.
         checkout_json structure expected:

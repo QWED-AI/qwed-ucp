@@ -1,7 +1,8 @@
 """Tests for Money Guard - Mathematical verification."""
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from qwed_ucp.guards.money import MoneyGuard
 

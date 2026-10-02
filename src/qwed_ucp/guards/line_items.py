@@ -7,8 +7,8 @@ Validates that:
 """
 
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Optional
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from qwed_ucp.types import TrustStatus, reconcile_trust_status
 
@@ -18,9 +18,9 @@ class LineItemsGuardResult:
     """Result from Line Items Guard verification."""
     
     verified: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     details: dict = field(default_factory=dict)
-    status: Optional[TrustStatus] = None
+    status: TrustStatus | None = None
 
     def __post_init__(self):
         self.verified, self.status = reconcile_trust_status(self.verified, self.status)

@@ -13,16 +13,16 @@ Usage:
 
 import json
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from qwed_ucp.core import UCPVerifier
-from qwed_ucp.guards.line_items import LineItemsGuard
-from qwed_ucp.guards.discount import DiscountGuard
 from qwed_ucp.guards.currency import CurrencyGuard
+from qwed_ucp.guards.discount import DiscountGuard
+from qwed_ucp.guards.line_items import LineItemsGuard
 
 logger = logging.getLogger("qwed_ucp.middleware")
 
@@ -55,8 +55,8 @@ class QWEDUCPMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        verify_paths: Optional[list[str]] = None,
-        verify_methods: Optional[list[str]] = None,
+        verify_paths: list[str] | None = None,
+        verify_methods: list[str] | None = None,
         block_on_failure: bool = True,
         include_details: bool = True,
         use_advanced_guards: bool = True,
@@ -260,7 +260,7 @@ def _run_advanced_guards(body, result, li_guard, disc_guard, curr_guard):
 
 
 def create_verification_dependency(
-    verifier: Optional[UCPVerifier] = None,
+    verifier: UCPVerifier | None = None,
     use_advanced_guards: bool = True
 ):
     """

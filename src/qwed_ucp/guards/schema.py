@@ -8,7 +8,7 @@ Validates that checkout objects conform to UCP specification:
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from qwed_ucp.types import TrustStatus, reconcile_trust_status
 
@@ -24,9 +24,9 @@ class SchemaGuardResult:
     """Result from Schema Guard verification."""
     
     verified: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     details: dict = field(default_factory=dict)
-    status: Optional[TrustStatus] = None
+    status: TrustStatus | None = None
 
     def __post_init__(self):
         self.verified, self.status = reconcile_trust_status(self.verified, self.status)
@@ -97,7 +97,7 @@ class SchemaGuard:
     manual validation for required fields.
     """
     
-    def __init__(self, schema: Optional[dict] = None):
+    def __init__(self, schema: dict | None = None):
         """
         Initialize Schema Guard.
         
@@ -214,6 +214,6 @@ class SchemaGuard:
         Returns:
             SchemaGuard instance with loaded schema
         """
-        with open(path, "r") as f:
+        with open(path) as f:
             schema = json.load(f)
         return cls(schema=schema)

@@ -15,7 +15,7 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT))
 
-from action_entrypoint import _safe_resolve  # noqa: E402
+from action_entrypoint import _safe_resolve
 
 
 class TestSafeResolveInSandbox:

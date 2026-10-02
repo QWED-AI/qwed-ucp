@@ -143,7 +143,6 @@ class TestVerificationDependency:
     def test_dependency_rejects_array(self):
         """The dependency function must reject non-object JSON."""
         import asyncio
-
         from unittest.mock import AsyncMock
 
         from qwed_ucp.middleware.fastapi import create_verification_dependency
@@ -160,7 +159,6 @@ class TestVerificationDependency:
     def test_dependency_rejects_number(self):
         """The dependency function must reject numeric JSON."""
         import asyncio
-
         from unittest.mock import AsyncMock
 
         from qwed_ucp.middleware.fastapi import create_verification_dependency
@@ -176,7 +174,6 @@ class TestVerificationDependency:
     def test_dependency_rejects_malformed_json(self):
         """The dependency function must reject malformed JSON."""
         import asyncio
-
         from unittest.mock import AsyncMock
 
         from qwed_ucp.middleware.fastapi import create_verification_dependency
@@ -193,7 +190,6 @@ class TestVerificationDependency:
     def test_dependency_rejects_empty_body(self):
         """The dependency function must reject empty body."""
         import asyncio
-
         from unittest.mock import AsyncMock
 
         from qwed_ucp.middleware.fastapi import create_verification_dependency
