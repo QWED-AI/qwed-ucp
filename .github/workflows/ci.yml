@@ -23,15 +23,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install dependencies (locked)
+        # Sonar S8475/S7077 + Greptile/CodeAnt: the whole dependency graph is
+        # installed from uv.lock, so CI cannot resolve versions the lockfile
+        # does not pin. --no-build keeps third-party installs wheel-only (no
+        # setup scripts); --no-install-project skips the first-party build (the
+        # package is imported from src/ via PYTHONPATH in the test step).
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov jsonschema starlette httpx
-          pip install -e .
+          pip install --only-binary :all: uv==0.11.29
+          uv sync --locked --no-build --no-install-project --extra dev
+
+      - name: Verify the distribution builds
+        # Greptile: source tests alone never proved the sdist/wheel can be
+        # built. --no-isolation reuses the locked dev environment (hatchling is
+        # pinned in uv.lock), so no unpinned backend is resolved here.
+        run: .venv/bin/python -m build --no-isolation
 
       - name: Run tests
         run: |
-          PYTHONPATH=src pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml
+          PYTHONPATH=src .venv/bin/python -m pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@0561704f0f02c16a585d4c7555e57fa2e44cf909 # v5.5.2
@@ -53,7 +63,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install ruff
-        run: pip install ruff
+        # Pinned so CI does not silently resolve a new ruff release.
+        # (Quoted: ":all:" would otherwise break plain-scalar YAML parsing.)
+        run: 'pip install --only-binary :all: ruff==0.16.1'
 
       - name: Lint with ruff
         run: ruff check src/ tests/

@@ -17,11 +17,18 @@ jobs:
         with:
           python-version: "3.11"
       
-      - name: Install build tools
-        run: pip install build
-      
+      - name: Install uv (pinned)
+        run: 'pip install --only-binary :all: uv==0.11.29'
+
+      - name: Sync locked build environment
+        # uv.lock pins both the build frontend and the Hatchling backend, so the
+        # release cannot pick up a new backend version.
+        run: uv sync --locked --no-build --no-install-project --extra dev
+
       - name: Build package
-        run: python -m build
+        # --no-isolation builds with the Hatchling version pinned in uv.lock
+        # instead of resolving an unpinned backend into an isolated environment.
+        run: .venv/bin/python -m build --no-isolation
       
       - name: Upload artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
