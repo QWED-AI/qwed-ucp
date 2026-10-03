@@ -23,17 +23,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        # sonar S8475/S7077: versions pinned to uv.lock, and --only-binary :all:
-        # blocks build-backend/setup-script execution for third-party deps.
-        # The project is imported from src/ (PYTHONPATH below), so no
-        # source build of the first-party package is required here.
+      - name: Install dependencies (locked)
+        # Sonar S8475/S7077 + Greptile/CodeAnt: the whole dependency graph is
+        # installed from uv.lock, so CI cannot resolve versions the lockfile
+        # does not pin. --no-build keeps third-party installs wheel-only (no
+        # setup scripts); --no-install-project skips the first-party build (the
+        # package is imported from src/ via PYTHONPATH in the test step).
         run: |
-          pip install --only-binary :all: pytest==9.1.1 pytest-cov==7.1.0 PyJWT==2.15.0 jsonschema==4.26.0 starlette==1.3.1 httpx==0.28.1
+          pip install --only-binary :all: uv==0.11.29
+          uv sync --locked --no-build --no-install-project --extra dev
+
+      - name: Verify the distribution builds
+        # Greptile: source tests alone never proved the sdist/wheel can be
+        # built. --no-isolation reuses the locked dev environment (hatchling is
+        # pinned in uv.lock), so no unpinned backend is resolved here.
+        run: .venv/bin/python -m build --no-isolation
 
       - name: Run tests
         run: |
-          PYTHONPATH=src pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml
+          PYTHONPATH=src .venv/bin/python -m pytest tests/ -v --cov=src/qwed_ucp --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@0561704f0f02c16a585d4c7555e57fa2e44cf909 # v5.5.2

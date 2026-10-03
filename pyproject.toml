@@ -1,5 +1,7 @@
 [build-system]
-requires = ["hatchling"]
+# Backend pinned so builds cannot silently pick up a new Hatchling release
+# (CodeAnt/Greptile on PR #48). Kept in sync with the `hatchling` dev pin below.
+requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -35,6 +37,12 @@ dev = [
     "pytest-timeout>=2.0.0",
     "starlette>=0.27.0",
     "httpx>=0.24.0",
+    # Build backend pinned in uv.lock so `python -m build --no-isolation`
+    # (CI + release) uses exactly this version instead of resolving an
+    # unpinned Hatchling into a throwaway environment.
+    "hatchling==1.32.4",
+    # Build frontend for the packaging check in CI / release, also locked.
+    "build==1.6.1",
 ]
 
 [project.urls]
