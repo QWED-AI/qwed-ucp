@@ -85,7 +85,7 @@ console.log(result.verified); // true
 
 ## Links
 
-- **Documentation:** [docs.qwedai.com/docs/ucp/overview](https://docs.qwedai.com/docs/ucp/overview)
+- **Documentation:** [docs.qwedai.tech/docs/ucp/overview](https://docs.qwedai.tech/docs/ucp/overview)
 - **GitHub:** [QWED-AI/qwed-ucp](https://github.com/QWED-AI/qwed-ucp)
 - **Python Package:** [pip install qwed-ucp](https://pypi.org/project/qwed-ucp/)
 

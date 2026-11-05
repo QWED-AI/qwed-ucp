@@ -22,7 +22,7 @@
   <a href="#-the-guards">The Guards</a> ·
   <a href="#-integration">Integration</a> ·
   <a href="#-trust-status">Trust Status</a> ·
-  <a href="https://docs.qwedai.com/docs/ucp/overview">📖 Docs</a>
+  <a href="https://docs.qwedai.tech/docs/ucp/overview">📖 Docs</a>
 </div>
 
 ---
@@ -487,7 +487,7 @@ The `verified: bool` field is preserved for backward compatibility.
 |----------|------|
 | **Universal Commerce Protocol** | [ucp.dev](https://ucp.dev) |
 | **Google UCP Docs** | [developers.google.com/merchant/ucp](https://developers.google.com/merchant/ucp) |
-| **QWED Documentation** | [docs.qwedai.com](https://docs.qwedai.com/docs/ucp/overview) |
+| **QWED Documentation** | [docs.qwedai.tech](https://docs.qwedai.tech/docs/ucp/overview) |
 | **QWED-AI Organization** | [github.com/QWED-AI](https://github.com/QWED-AI) |
 
 ---

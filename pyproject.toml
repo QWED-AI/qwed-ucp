@@ -11,7 +11,7 @@ description = "QWED verification for Universal Commerce Protocol (UCP) transacti
 readme = "README.md"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Rahul Dass", email = "rahul@qwedai.com"}
+    {name = "Rahul Dass", email = "rahul@qwedai.tech"}
 ]
 keywords = ["qwed", "ucp", "commerce", "verification", "ai", "llm", "google"]
 classifiers = [
