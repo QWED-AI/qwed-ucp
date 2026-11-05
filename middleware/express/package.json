@@ -20,13 +20,13 @@
         "qwed",
         "deterministic-verification"
     ],
-    "author": "QWED-AI <rahul@qwedai.com>",
+    "author": "QWED-AI <rahul@qwedai.tech>",
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/QWED-AI/qwed-ucp.git"
     },
-    "homepage": "https://docs.qwedai.com/docs/ucp/overview",
+    "homepage": "https://docs.qwedai.tech/docs/ucp/overview",
     "bugs": {
         "url": "https://github.com/QWED-AI/qwed-ucp/issues"
     },
